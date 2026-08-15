@@ -253,6 +253,7 @@ if (app) {
     claimBox.hidden = !result.claimCode;
     claimCode.textContent = result.claimCode || "";
     dialog.showModal();
+    playAgainButton.focus();
     if (result.claimStatus !== "not_required") launchConfetti();
   }
 
@@ -263,6 +264,17 @@ if (app) {
     spinButton.disabled = false;
     spinButtonText.textContent = "PUTAR LAGI";
     statusText.textContent = "Roda siap untuk permainan berikutnya.";
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || event.repeat) return;
+
+    event.preventDefault();
+    if (dialog.open) {
+      playAgainButton.click();
+      return;
+    }
+
+    if (!spinning && campaign && !spinButton.disabled) spinButton.click();
   });
 
   initialize();
