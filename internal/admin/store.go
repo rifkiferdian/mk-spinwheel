@@ -116,9 +116,21 @@ type ReportDetail struct {
 }
 
 type AdminUser struct {
-	ID                             int64
-	Username, CreatedAt, UpdatedAt string
-	IsActive                       bool
+	ID                                   int64
+	Username, Role, CreatedAt, UpdatedAt string
+	IsActive                             bool
+}
+
+const (
+	RoleSuperAdmin    = "super_admin"
+	RoleCampaignAdmin = "campaign_admin"
+)
+
+func (a AdminUser) RoleLabel() string {
+	if a.Role == RoleCampaignAdmin {
+		return "Campaign Admin"
+	}
+	return "Super Admin"
 }
 
 func (s *Store) Dashboard(ctx context.Context) (DashboardStats, []GameResult, error) {
@@ -597,7 +609,11 @@ func (s *Store) Report(ctx context.Context, filter ReportFilter, detailLimit int
 }
 
 func (s *Store) Admins(ctx context.Context) ([]AdminUser, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id,username,is_active,created_at,updated_at FROM admins ORDER BY username`)
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT a.id,a.username,COALESCE(ar.role,'super_admin'),a.is_active,a.created_at,a.updated_at
+		FROM admins a LEFT JOIN admin_roles ar ON ar.admin_id=a.id
+		ORDER BY a.username
+	`)
 	if err != nil {
 		return nil, err
 	}
@@ -605,7 +621,7 @@ func (s *Store) Admins(ctx context.Context) ([]AdminUser, error) {
 	var items []AdminUser
 	for rows.Next() {
 		var item AdminUser
-		if err := rows.Scan(&item.ID, &item.Username, &item.IsActive, &item.CreatedAt, &item.UpdatedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.Username, &item.Role, &item.IsActive, &item.CreatedAt, &item.UpdatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
@@ -613,7 +629,7 @@ func (s *Store) Admins(ctx context.Context) ([]AdminUser, error) {
 	return items, rows.Err()
 }
 
-func (s *Store) CreateAdmin(ctx context.Context, username, password string) error {
+func (s *Store) CreateAdmin(ctx context.Context, username, password, role string) error {
 	username = strings.TrimSpace(username)
 	if len(username) < 3 {
 		return errors.New("username minimal 3 karakter")
@@ -621,12 +637,64 @@ func (s *Store) CreateAdmin(ctx context.Context, username, password string) erro
 	if len(password) < 8 {
 		return errors.New("password minimal 8 karakter")
 	}
+	if role != RoleSuperAdmin && role != RoleCampaignAdmin {
+		return errors.New("role admin tidak valid")
+	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
-	_, err = s.db.ExecContext(ctx, `INSERT INTO admins (username,password_hash) VALUES (?,?)`, username, string(hash))
-	return err
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	result, err := tx.ExecContext(ctx, `INSERT INTO admins (username,password_hash) VALUES (?,?)`, username, string(hash))
+	if err != nil {
+		return err
+	}
+	adminID, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO admin_roles (admin_id,role) VALUES (?,?)`, adminID, role); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (s *Store) UpdateAdminCredentials(ctx context.Context, currentUsername, newUsername, newPassword string) error {
+	currentUsername = strings.TrimSpace(currentUsername)
+	newUsername = strings.TrimSpace(newUsername)
+	if currentUsername == "" {
+		return errors.New("username akun yang akan diubah wajib diisi")
+	}
+	if len(newUsername) < 3 {
+		return errors.New("username minimal 3 karakter")
+	}
+	if len(newPassword) < 8 {
+		return errors.New("password minimal 8 karakter")
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	result, err := s.db.ExecContext(ctx, `
+		UPDATE admins
+		SET username=?,password_hash=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
+		WHERE username=?
+	`, newUsername, string(hash), currentUsername)
+	if err != nil {
+		return err
+	}
+	updated, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if updated == 0 {
+		return errors.New("akun admin tidak ditemukan")
+	}
+	return nil
 }
 
 func (s *Store) SetAdminActive(ctx context.Context, id int64, active bool) error {
@@ -646,7 +714,11 @@ func (s *Store) SetAdminActive(ctx context.Context, id int64, active bool) error
 func (s *Store) Authenticate(ctx context.Context, username, password string) (AdminUser, error) {
 	var item AdminUser
 	var hash string
-	err := s.db.QueryRowContext(ctx, `SELECT id,username,password_hash,is_active,created_at,updated_at FROM admins WHERE username=?`, strings.TrimSpace(username)).Scan(&item.ID, &item.Username, &hash, &item.IsActive, &item.CreatedAt, &item.UpdatedAt)
+	err := s.db.QueryRowContext(ctx, `
+		SELECT a.id,a.username,a.password_hash,COALESCE(ar.role,'super_admin'),a.is_active,a.created_at,a.updated_at
+		FROM admins a LEFT JOIN admin_roles ar ON ar.admin_id=a.id
+		WHERE a.username=?
+	`, strings.TrimSpace(username)).Scan(&item.ID, &item.Username, &hash, &item.Role, &item.IsActive, &item.CreatedAt, &item.UpdatedAt)
 	if err != nil {
 		return item, errors.New("username atau password salah")
 	}

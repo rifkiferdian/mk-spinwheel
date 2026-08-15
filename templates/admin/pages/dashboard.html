@@ -4,7 +4,7 @@
   <div class="stat-card"><div class="text-sm text-slate-500">Jenis hadiah</div><div class="mt-2 text-3xl font-bold text-slate-950">{{.Data.Stats.Prizes}}</div></div>
   <div class="stat-card"><div class="text-sm text-slate-500">Sisa stok</div><div class="mt-2 text-3xl font-bold text-slate-950">{{.Data.Stats.RemainingStock}}</div></div>
   <div class="stat-card"><div class="text-sm text-slate-500">Total permainan</div><div class="mt-2 text-3xl font-bold text-slate-950">{{.Data.Stats.TotalPlays}}</div></div>
-  <div class="stat-card sm:col-span-2"><div class="text-sm text-slate-500">Menunggu klaim</div><div class="mt-2 text-3xl font-bold text-amber-600">{{.Data.Stats.PendingClaims}}</div><a class="mt-2 inline-block text-xs font-semibold text-brand-600" href="/admin/results">Lihat klaim →</a></div>
+  <div class="stat-card sm:col-span-2"><div class="text-sm text-slate-500">Menunggu klaim</div><div class="mt-2 text-3xl font-bold text-amber-600">{{.Data.Stats.PendingClaims}}</div>{{if .Admin.IsSuperAdmin}}<a class="mt-2 inline-block text-xs font-semibold text-brand-600" href="/admin/results">Lihat klaim →</a>{{end}}</div>
 </div>
 
 <section class="card mt-6">
@@ -34,7 +34,7 @@
 </section>
 
 <div class="card mt-6">
-  <div class="card-header"><div><h2 class="font-bold text-slate-950">Hasil terbaru</h2><p class="text-sm text-slate-500">Delapan permainan terakhir.</p></div><a class="btn-secondary btn-small" href="/admin/results">Lihat semua</a></div>
+  <div class="card-header"><div><h2 class="font-bold text-slate-950">Hasil terbaru</h2><p class="text-sm text-slate-500">Delapan permainan terakhir.</p></div>{{if .Admin.IsSuperAdmin}}<a class="btn-secondary btn-small" href="/admin/results">Lihat semua</a>{{end}}</div>
   <div class="table-wrap">
     <table class="data-table"><thead><tr><th>Waktu</th><th>Campaign</th><th>Hadiah</th><th>Kode klaim</th><th>Status</th></tr></thead>
       <tbody>{{range .Data.Results}}<tr><td class="whitespace-nowrap text-slate-500">{{date .PlayedAt}}</td><td class="font-medium">{{.CampaignName}}</td><td>{{.PrizeName}}</td><td class="font-mono text-xs">{{if .ClaimCode}}{{.ClaimCode}}{{else}}—{{end}}</td><td><span class="{{statusClass .ClaimStatus}}">{{.ClaimStatus}}</span></td></tr>{{else}}<tr><td colspan="5" class="py-10 text-center text-slate-500">Belum ada permainan.</td></tr>{{end}}</tbody>

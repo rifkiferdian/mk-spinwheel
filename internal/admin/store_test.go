@@ -20,7 +20,7 @@ func TestSaveCampaignSupportsMultipleGames(t *testing.T) {
 	if _, err = db.Exec("PRAGMA foreign_keys=ON"); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"001_initial_schema.sql", "002_campaign_games.sql"} {
+	for _, name := range []string{"001_initial_schema.sql", "002_campaign_games.sql", "004_admin_roles.sql"} {
 		content, readErr := os.ReadFile(filepath.Join("..", "..", "migrations", name))
 		if readErr != nil {
 			t.Fatal(readErr)
@@ -84,6 +84,30 @@ func TestSaveCampaignSupportsMultipleGames(t *testing.T) {
 	}
 	if len(prizes) != 2 || len(daily) != 1 || len(details) != 2 {
 		t.Fatalf("report prizes=%d daily=%d details=%d", len(prizes), len(daily), len(details))
+	}
+
+	if err = store.CreateAdmin(context.Background(), "campaignadmin", "password-aman", RoleCampaignAdmin); err != nil {
+		t.Fatal(err)
+	}
+	user, err := store.Authenticate(context.Background(), "campaignadmin", "password-aman")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if user.Role != RoleCampaignAdmin {
+		t.Fatalf("role login = %q", user.Role)
+	}
+	if err = store.UpdateAdminCredentials(context.Background(), "campaignadmin", "mkadmin", "admin123"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = store.Authenticate(context.Background(), "campaignadmin", "password-aman"); err == nil {
+		t.Fatal("username lama seharusnya tidak dapat digunakan")
+	}
+	user, err = store.Authenticate(context.Background(), "mkadmin", "admin123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if user.Role != RoleCampaignAdmin {
+		t.Fatalf("role berubah setelah update: %q", user.Role)
 	}
 }
 

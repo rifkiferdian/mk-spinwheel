@@ -17,8 +17,17 @@ const adminContextKey contextKey = "admin-session"
 type LoginSession struct {
 	AdminID  int64
 	Username string
+	Role     string
 	CSRF     string
 	Expires  time.Time
+}
+
+func (s LoginSession) IsSuperAdmin() bool { return s.Role == RoleSuperAdmin }
+func (s LoginSession) RoleLabel() string {
+	if s.Role == RoleCampaignAdmin {
+		return "Campaign Admin"
+	}
+	return "Super Admin"
 }
 
 type SessionManager struct {
@@ -41,7 +50,7 @@ func (m *SessionManager) Create(w http.ResponseWriter, admin AdminUser) (LoginSe
 	if err != nil {
 		return LoginSession{}, err
 	}
-	session := LoginSession{AdminID: admin.ID, Username: admin.Username, CSRF: csrf, Expires: time.Now().Add(m.lifetime)}
+	session := LoginSession{AdminID: admin.ID, Username: admin.Username, Role: admin.Role, CSRF: csrf, Expires: time.Now().Add(m.lifetime)}
 	m.mu.Lock()
 	m.sessions[token] = session
 	m.mu.Unlock()

@@ -52,6 +52,7 @@ New-Item -ItemType Directory -Force data
 sqlite3 ./data/game.db ".read ./migrations/001_initial_schema.sql"
 sqlite3 ./data/game.db ".read ./migrations/002_campaign_games.sql"
 sqlite3 ./data/game.db ".read ./migrations/003_rename_mystery_box.sql"
+sqlite3 ./data/game.db ".read ./migrations/004_admin_roles.sql"
 ```
 
 Data contoh bersifat opsional:

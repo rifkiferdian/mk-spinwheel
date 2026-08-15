@@ -17,7 +17,7 @@
       </div>
       {{template "navigation" .}}
       <div class="mt-auto border-t border-slate-800 p-4">
-        <div class="mb-3 px-2 text-sm"><div class="text-slate-500">Login sebagai</div><div class="font-semibold text-white">{{.Admin.Username}}</div></div>
+        <div class="mb-3 px-2 text-sm"><div class="text-slate-500">Login sebagai</div><div class="font-semibold text-white">{{.Admin.Username}}</div><div class="mt-1 text-xs text-orange-400">{{.Admin.RoleLabel}}</div></div>
         <form method="post" action="/admin/logout"><input type="hidden" name="csrf_token" value="{{.CSRF}}"><button class="nav-link w-full" type="submit">Keluar</button></form>
       </div>
     </aside>
@@ -44,12 +44,15 @@
 <nav class="flex-1 space-y-1 p-4">
   <a class="nav-link {{if eq .ActiveNav "dashboard"}}nav-link-active{{end}}" href="/admin/">Dashboard</a>
   <a class="nav-link {{if eq .ActiveNav "campaigns"}}nav-link-active{{end}}" href="/admin/campaigns">Campaign</a>
-  <a class="nav-link {{if eq .ActiveNav "game-types"}}nav-link-active{{end}}" href="/admin/game-types">Jenis Game</a>
   <a class="nav-link {{if eq .ActiveNav "prizes"}}nav-link-active{{end}}" href="/admin/prizes">Hadiah</a>
+  <a class="nav-link {{if eq .ActiveNav "reports"}}nav-link-active{{end}}" href="/admin/reports">Report Campaign</a>
+  {{if .Admin.IsSuperAdmin}}
+  <div class="px-3 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-600">Pengaturan sistem</div>
+  <a class="nav-link {{if eq .ActiveNav "game-types"}}nav-link-active{{end}}" href="/admin/game-types">Jenis Game</a>
   <a class="nav-link {{if eq .ActiveNav "access-codes"}}nav-link-active{{end}}" href="/admin/access-codes">Kode Akses</a>
   <a class="nav-link {{if eq .ActiveNav "sessions"}}nav-link-active{{end}}" href="/admin/sessions">Sesi Permainan</a>
   <a class="nav-link {{if eq .ActiveNav "results"}}nav-link-active{{end}}" href="/admin/results">Hasil &amp; Klaim</a>
-  <a class="nav-link {{if eq .ActiveNav "reports"}}nav-link-active{{end}}" href="/admin/reports">Report Campaign</a>
   <a class="nav-link {{if eq .ActiveNav "admins"}}nav-link-active{{end}}" href="/admin/admins">Akun Admin</a>
+  {{end}}
 </nav>
 {{end}}

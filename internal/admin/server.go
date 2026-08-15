@@ -40,26 +40,36 @@ func (s *Server) Routes(static, public http.Handler) http.Handler {
 	protected.HandleFunc("GET /admin", func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "/admin/", http.StatusSeeOther) })
 	protected.HandleFunc("GET /admin/", s.dashboard)
 	protected.HandleFunc("POST /admin/logout", s.logout)
-	protected.HandleFunc("GET /admin/game-types", s.gameTypes)
-	protected.HandleFunc("POST /admin/game-types/save", s.saveGameType)
+	protected.HandleFunc("GET /admin/game-types", superAdminOnly(s.gameTypes))
+	protected.HandleFunc("POST /admin/game-types/save", superAdminOnly(s.saveGameType))
 	protected.HandleFunc("GET /admin/campaigns", s.campaigns)
 	protected.HandleFunc("POST /admin/campaigns/save", s.saveCampaign)
 	protected.HandleFunc("GET /admin/prizes", s.prizes)
 	protected.HandleFunc("POST /admin/prizes/save", s.savePrize)
-	protected.HandleFunc("GET /admin/access-codes", s.accessCodes)
-	protected.HandleFunc("POST /admin/access-codes/add", s.addAccessCodes)
-	protected.HandleFunc("POST /admin/access-codes/{id}/status", s.setAccessCodeStatus)
-	protected.HandleFunc("GET /admin/sessions", s.gameSessions)
-	protected.HandleFunc("GET /admin/results", s.results)
-	protected.HandleFunc("POST /admin/results/{id}/status", s.setClaimStatus)
+	protected.HandleFunc("GET /admin/access-codes", superAdminOnly(s.accessCodes))
+	protected.HandleFunc("POST /admin/access-codes/add", superAdminOnly(s.addAccessCodes))
+	protected.HandleFunc("POST /admin/access-codes/{id}/status", superAdminOnly(s.setAccessCodeStatus))
+	protected.HandleFunc("GET /admin/sessions", superAdminOnly(s.gameSessions))
+	protected.HandleFunc("GET /admin/results", superAdminOnly(s.results))
+	protected.HandleFunc("POST /admin/results/{id}/status", superAdminOnly(s.setClaimStatus))
 	protected.HandleFunc("GET /admin/reports", s.reports)
 	protected.HandleFunc("GET /admin/reports/export", s.exportReport)
-	protected.HandleFunc("GET /admin/admins", s.admins)
-	protected.HandleFunc("POST /admin/admins/create", s.createAdmin)
-	protected.HandleFunc("POST /admin/admins/{id}/active", s.setAdminActive)
+	protected.HandleFunc("GET /admin/admins", superAdminOnly(s.admins))
+	protected.HandleFunc("POST /admin/admins/create", superAdminOnly(s.createAdmin))
+	protected.HandleFunc("POST /admin/admins/{id}/active", superAdminOnly(s.setAdminActive))
 	mux.Handle("/admin", s.sessions.RequireAuth(protected))
 	mux.Handle("/admin/", s.sessions.RequireAuth(protected))
 	return securityHeaders(mux)
+}
+
+func superAdminOnly(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !currentAdmin(r).IsSuperAdmin() {
+			http.Error(w, "Anda tidak memiliki akses ke modul ini", http.StatusForbidden)
+			return
+		}
+		next(w, r)
+	}
 }
 
 func securityHeaders(next http.Handler) http.Handler {
@@ -146,7 +156,7 @@ func (s *Server) setup(w http.ResponseWriter, r *http.Request) {
 		redirectMessage(w, r, "/admin/setup", "error", "Konfirmasi password tidak sama")
 		return
 	}
-	if err := s.store.CreateAdmin(r.Context(), r.FormValue("username"), password); err != nil {
+	if err := s.store.CreateAdmin(r.Context(), r.FormValue("username"), password, RoleSuperAdmin); err != nil {
 		redirectMessage(w, r, "/admin/setup", "error", friendlyDBError(err).Error())
 		return
 	}
@@ -479,7 +489,7 @@ func (s *Server) createAdmin(w http.ResponseWriter, r *http.Request) {
 		redirectMessage(w, r, "/admin/admins", "error", "Konfirmasi password tidak sama")
 		return
 	}
-	if err := s.store.CreateAdmin(r.Context(), r.FormValue("username"), r.FormValue("password")); err != nil {
+	if err := s.store.CreateAdmin(r.Context(), r.FormValue("username"), r.FormValue("password"), r.FormValue("role")); err != nil {
 		redirectMessage(w, r, "/admin/admins", "error", friendlyDBError(err).Error())
 		return
 	}
