@@ -1,0 +1,24 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o ./tmp/prizeplay.exe ./cmd/server"
+entrypoint = ["tmp\\prizeplay.exe"]
+include_ext = ["go", "html", "sql"]
+exclude_dir = ["tmp", "bin", "data", "node_modules", "static"]
+exclude_regex = ["_test\\.go"]
+exclude_unchanged = true
+delay = 300
+stop_on_error = true
+send_interrupt = false
+kill_delay = 500
+
+[log]
+time = true
+
+[misc]
+clean_on_exit = true
+
+[screen]
+clear_on_rebuild = false
+keep_scroll = true

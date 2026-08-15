@@ -1,0 +1,21 @@
+{{define "content"}}
+<div class="grid gap-6 xl:grid-cols-[430px_1fr]">
+  <section class="card h-fit"><div class="card-header"><div><h2 class="font-bold">{{if .Data.Edit.ID}}Edit hadiah{{else}}Hadiah baru{{end}}</h2><p class="text-sm text-slate-500">Bobot menentukan peluang relatif.</p></div>{{if .Data.Edit.ID}}<a class="text-sm font-semibold text-brand-600" href="/admin/prizes">Batal</a>{{end}}</div>
+    <form class="card-body space-y-4" method="post" action="/admin/prizes/save"><input type="hidden" name="csrf_token" value="{{.CSRF}}"><input type="hidden" name="id" value="{{.Data.Edit.ID}}">
+      <div><label class="label">Campaign</label><select class="input" name="campaign_id" required><option value="">Pilih campaign</option>{{range .Data.Campaigns}}<option value="{{.ID}}" {{if eq .ID $.Data.Edit.CampaignID}}selected{{end}}>{{.Name}}</option>{{end}}</select></div>
+      <div><label class="label">Nama hadiah</label><input class="input" name="name" value="{{.Data.Edit.Name}}" required></div>
+      <div><label class="label">Deskripsi</label><textarea class="input" name="description">{{.Data.Edit.Description}}</textarea></div>
+      <div class="grid gap-3 sm:grid-cols-2"><div><label class="label">Path gambar</label><input class="input" name="image_path" value="{{.Data.Edit.ImagePath}}" placeholder="/static/images/hadiah.webp"></div><div><label class="label">Warna</label><input class="input h-[42px]" type="color" name="color" value="{{if .Data.Edit.Color}}{{.Data.Edit.Color}}{{else}}#6366f1{{end}}"></div></div>
+      <div class="grid grid-cols-2 gap-3"><div><label class="label">Bobot</label><input class="input" type="number" step="0.01" min="0.01" name="weight" value="{{.Data.Edit.Weight}}" required></div><div><label class="label">Urutan</label><input class="input" type="number" name="display_order" value="{{.Data.Edit.DisplayOrder}}"></div></div>
+      <div class="grid grid-cols-2 gap-3"><div><label class="label">Stok awal</label><input class="input" type="number" min="0" name="initial_stock" value="{{.Data.Edit.InitialStock}}"></div><div><label class="label">Sisa stok</label><input class="input" type="number" min="0" name="remaining_stock" value="{{.Data.Edit.RemainingStock}}"></div></div>
+      <div class="grid gap-2 text-sm sm:grid-cols-3"><label class="flex items-center gap-2"><input class="checkbox" type="checkbox" name="is_unlimited" value="1" {{if .Data.Edit.IsUnlimited}}checked{{end}}> Tanpa batas</label><label class="flex items-center gap-2"><input class="checkbox" type="checkbox" name="requires_claim" value="1" {{if .Data.Edit.RequiresClaim}}checked{{end}}> Perlu klaim</label><label class="flex items-center gap-2"><input class="checkbox" type="checkbox" name="is_active" value="1" {{if .Data.Edit.IsActive}}checked{{end}}> Aktif</label></div>
+      <button class="btn-primary w-full" type="submit">Simpan hadiah</button>
+    </form>
+  </section>
+  <section class="card"><div class="card-header"><div><h2 class="font-bold">Daftar hadiah</h2><p class="text-sm text-slate-500">Stok kosong otomatis tidak boleh dimenangkan.</p></div><form method="get"><select class="input min-w-52" name="campaign" data-auto-submit><option value="">Semua campaign</option>{{range .Data.Campaigns}}<option value="{{.ID}}" {{if eq .ID $.Data.CampaignID}}selected{{end}}>{{.Name}}</option>{{end}}</select></form></div>
+    <div class="table-wrap"><table class="data-table"><thead><tr><th>Hadiah</th><th>Campaign</th><th>Bobot</th><th>Stok</th><th>Status</th><th></th></tr></thead><tbody>
+      {{range .Data.Items}}<tr><td><div class="font-semibold">{{.Name}}</div><div class="max-w-56 truncate text-xs text-slate-400">{{.Description}} {{.Color}}</div></td><td>{{.CampaignName}}</td><td>{{.Weight}}</td><td>{{if .IsUnlimited}}∞{{else}}<span class="font-semibold">{{.RemainingStock}}</span> / {{.InitialStock}}{{end}}</td><td><span class="{{statusClass .IsActive}}">{{if .IsActive}}aktif{{else}}nonaktif{{end}}</span></td><td><a class="btn-secondary btn-small" href="/admin/prizes?edit={{.ID}}">Edit</a></td></tr>{{else}}<tr><td colspan="6" class="py-10 text-center text-slate-500">Belum ada hadiah.</td></tr>{{end}}
+    </tbody></table></div>
+  </section>
+</div>
+{{end}}

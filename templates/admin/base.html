@@ -1,0 +1,54 @@
+{{define "base.html"}}
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{.PageTitle}} · PrizePlay Admin</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script src="/static/js/admin.js" defer></script>
+</head>
+<body>
+  <div class="min-h-screen lg:flex">
+    <aside class="hidden w-64 shrink-0 flex-col bg-slate-950 lg:flex">
+      <div class="flex h-20 items-center gap-3 border-b border-slate-800 px-6">
+        <span class="grid size-10 place-items-center rounded-2xl bg-brand-600 text-xl text-white">✦</span>
+        <div><div class="font-bold text-white">PrizePlay</div><div class="text-xs text-slate-500">Admin Console</div></div>
+      </div>
+      {{template "navigation" .}}
+      <div class="mt-auto border-t border-slate-800 p-4">
+        <div class="mb-3 px-2 text-sm"><div class="text-slate-500">Login sebagai</div><div class="font-semibold text-white">{{.Admin.Username}}</div></div>
+        <form method="post" action="/admin/logout"><input type="hidden" name="csrf_token" value="{{.CSRF}}"><button class="nav-link w-full" type="submit">Keluar</button></form>
+      </div>
+    </aside>
+    <main class="min-w-0 flex-1">
+      <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
+        <details>
+          <summary class="flex cursor-pointer list-none items-center justify-between font-bold"><span>✦ PrizePlay Admin</span><span class="text-slate-500">Menu</span></summary>
+          <div class="mt-3 rounded-2xl bg-slate-950 p-3">{{template "navigation" .}}</div>
+        </details>
+      </header>
+      <div class="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8">
+        <div class="mb-6"><h1 class="text-2xl font-bold tracking-tight text-slate-950">{{.PageTitle}}</h1><p class="mt-1 text-sm text-slate-500">Kelola platform mini-game dan hadiah Anda.</p></div>
+        {{if .Notice}}<div class="alert-success mb-5">{{.Notice}}</div>{{end}}
+        {{if .Error}}<div class="alert-error mb-5">{{.Error}}</div>{{end}}
+        {{template "content" .}}
+      </div>
+    </main>
+  </div>
+</body>
+</html>
+{{end}}
+
+{{define "navigation"}}
+<nav class="flex-1 space-y-1 p-4">
+  <a class="nav-link {{if eq .ActiveNav "dashboard"}}nav-link-active{{end}}" href="/admin/">Dashboard</a>
+  <a class="nav-link {{if eq .ActiveNav "campaigns"}}nav-link-active{{end}}" href="/admin/campaigns">Campaign</a>
+  <a class="nav-link {{if eq .ActiveNav "game-types"}}nav-link-active{{end}}" href="/admin/game-types">Jenis Game</a>
+  <a class="nav-link {{if eq .ActiveNav "prizes"}}nav-link-active{{end}}" href="/admin/prizes">Hadiah</a>
+  <a class="nav-link {{if eq .ActiveNav "access-codes"}}nav-link-active{{end}}" href="/admin/access-codes">Kode Akses</a>
+  <a class="nav-link {{if eq .ActiveNav "sessions"}}nav-link-active{{end}}" href="/admin/sessions">Sesi Permainan</a>
+  <a class="nav-link {{if eq .ActiveNav "results"}}nav-link-active{{end}}" href="/admin/results">Hasil & Klaim</a>
+  <a class="nav-link {{if eq .ActiveNav "admins"}}nav-link-active{{end}}" href="/admin/admins">Akun Admin</a>
+</nav>
+{{end}}

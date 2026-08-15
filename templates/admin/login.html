@@ -1,0 +1,28 @@
+{{define "login.html"}}
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{.PageTitle}} · PrizePlay</title><link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body class="min-h-screen bg-slate-950">
+  <main class="grid min-h-screen place-items-center p-4">
+    <div class="w-full max-w-md">
+      <div class="mb-8 text-center"><span class="mx-auto grid size-14 place-items-center rounded-2xl bg-brand-600 text-2xl text-white shadow-xl shadow-brand-600/30">✦</span><h1 class="mt-4 text-2xl font-bold text-white">PrizePlay Admin</h1><p class="mt-1 text-sm text-slate-400">Platform mini-game berhadiah</p></div>
+      <section class="rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+        {{if .Data.Setup}}<h2 class="text-xl font-bold text-slate-950">Buat admin pertama</h2><p class="mt-1 text-sm text-slate-500">Setup ini otomatis ditutup setelah akun dibuat.</p>{{else}}<h2 class="text-xl font-bold text-slate-950">Selamat datang</h2><p class="mt-1 text-sm text-slate-500">Masuk untuk mengelola permainan.</p>{{end}}
+        {{if .Error}}<div class="alert-error mt-5">{{.Error}}</div>{{end}}
+        {{if .Notice}}<div class="alert-success mt-5">{{.Notice}}</div>{{end}}
+        <form class="mt-6 space-y-4" method="post" action="{{if .Data.Setup}}/admin/setup{{else}}/admin/login{{end}}">
+          <div><label class="label" for="username">Username</label><input class="input" id="username" name="username" required minlength="3" autocomplete="username" autofocus></div>
+          <div><label class="label" for="password">Password</label><input class="input" type="password" id="password" name="password" required minlength="8" autocomplete="{{if .Data.Setup}}new-password{{else}}current-password{{end}}"></div>
+          {{if .Data.Setup}}<div><label class="label" for="password_confirmation">Ulangi password</label><input class="input" type="password" id="password_confirmation" name="password_confirmation" required minlength="8" autocomplete="new-password"></div>{{end}}
+          <button class="btn-primary w-full" type="submit">{{if .Data.Setup}}Buat akun & masuk{{else}}Masuk{{end}}</button>
+        </form>
+      </section>
+      <p class="mt-6 text-center text-xs text-slate-600">Session admin berlaku selama 12 jam.</p>
+    </div>
+  </main>
+</body>
+</html>
+{{end}}

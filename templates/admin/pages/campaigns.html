@@ -1,0 +1,20 @@
+{{define "content"}}
+<div class="grid gap-6 xl:grid-cols-[430px_1fr]">
+  <section class="card h-fit"><div class="card-header"><div><h2 class="font-bold">{{if .Data.Edit.ID}}Edit campaign{{else}}Campaign baru{{end}}</h2><p class="text-sm text-slate-500">Atur game, periode, dan konfigurasi.</p></div>{{if .Data.Edit.ID}}<a class="text-sm font-semibold text-brand-600" href="/admin/campaigns">Batal</a>{{end}}</div>
+    <form class="card-body space-y-4" method="post" action="/admin/campaigns/save"><input type="hidden" name="csrf_token" value="{{.CSRF}}"><input type="hidden" name="id" value="{{.Data.Edit.ID}}">
+      <div><label class="label">Nama campaign</label><input class="input" name="name" value="{{.Data.Edit.Name}}" data-slug-source required></div>
+      <div><label class="label">Slug URL</label><input class="input font-mono" name="slug" value="{{.Data.Edit.Slug}}" data-slug-target pattern="[a-z0-9-]+" required></div>
+      <div><label class="label">Jenis game</label><select class="input" name="game_type_code" required><option value="">Pilih game</option>{{range .Data.GameTypes}}<option value="{{.Code}}" {{if eq .Code $.Data.Edit.GameTypeCode}}selected{{end}}>{{.Name}}</option>{{end}}</select></div>
+      <div class="grid gap-3 sm:grid-cols-2"><div><label class="label">Mulai</label><input class="input" type="datetime-local" name="starts_at" value="{{datetimeLocal .Data.Edit.StartsAt}}"></div><div><label class="label">Selesai</label><input class="input" type="datetime-local" name="ends_at" value="{{datetimeLocal .Data.Edit.EndsAt}}"></div></div>
+      <div><label class="label">Konfigurasi game (JSON)</label><textarea class="input min-h-32 font-mono text-xs" name="game_config" spellcheck="false" required>{{jsonPretty .Data.Edit.GameConfig}}</textarea></div>
+      <label class="flex items-center gap-2 text-sm"><input class="checkbox" type="checkbox" name="is_active" value="1" {{if .Data.Edit.IsActive}}checked{{end}}> Campaign aktif</label>
+      <button class="btn-primary w-full" type="submit">Simpan campaign</button>
+    </form>
+  </section>
+  <section class="card"><div class="card-header"><div><h2 class="font-bold">Daftar campaign</h2><p class="text-sm text-slate-500">Satu campaign menggunakan satu jenis game.</p></div></div>
+    <div class="table-wrap"><table class="data-table"><thead><tr><th>Campaign</th><th>Game</th><th>Periode</th><th>Status</th><th></th></tr></thead><tbody>
+      {{range .Data.Items}}<tr><td><div class="font-semibold text-slate-900">{{.Name}}</div><div class="font-mono text-xs text-slate-400">/play/{{.Slug}}</div></td><td>{{.GameTypeName}}</td><td class="whitespace-nowrap text-xs text-slate-500">{{date .StartsAt}}<br>{{date .EndsAt}}</td><td><span class="{{statusClass .IsActive}}">{{if .IsActive}}aktif{{else}}nonaktif{{end}}</span></td><td><a class="btn-secondary btn-small" href="/admin/campaigns?edit={{.ID}}">Edit</a></td></tr>{{else}}<tr><td colspan="5" class="py-10 text-center text-slate-500">Belum ada campaign.</td></tr>{{end}}
+    </tbody></table></div>
+  </section>
+</div>
+{{end}}

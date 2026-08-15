@@ -1,0 +1,19 @@
+{{define "content"}}
+<div class="grid gap-6 xl:grid-cols-[380px_1fr]">
+  <section class="card h-fit"><div class="card-header"><div><h2 class="font-bold">Tambah jenis game</h2><p class="text-sm text-slate-500">Daftarkan modul frontend baru.</p></div></div>
+    <form class="card-body space-y-4" method="post" action="/admin/game-types/save"><input type="hidden" name="csrf_token" value="{{.CSRF}}">
+      <div><label class="label">Kode</label><input class="input" name="code" placeholder="contoh: fishing" pattern="[a-z0-9-]+" required></div>
+      <div><label class="label">Nama</label><input class="input" name="name" placeholder="Pancing Hadiah" required></div>
+      <div><label class="label">Modul frontend</label><input class="input" name="frontend_module" placeholder="games/fishing.js" required></div>
+      <label class="flex items-center gap-2 text-sm"><input class="checkbox" type="checkbox" name="is_active" value="1" checked> Aktif</label>
+      <button class="btn-primary w-full" type="submit">Simpan jenis game</button>
+    </form>
+  </section>
+  <section class="card"><div class="card-header"><div><h2 class="font-bold">Jenis game tersedia</h2><p class="text-sm text-slate-500">Kode yang sudah dipakai sebaiknya tidak diubah.</p></div></div>
+    {{range .Data.Items}}<form id="game-type-{{.Code}}" method="post" action="/admin/game-types/save"><input type="hidden" name="csrf_token" value="{{$.CSRF}}"></form>{{end}}
+    <div class="table-wrap"><table class="data-table"><thead><tr><th>Kode</th><th>Pengaturan</th><th>Status</th><th></th></tr></thead><tbody>
+      {{range .Data.Items}}<tr><td><input class="input min-w-36 font-mono" form="game-type-{{.Code}}" name="code" value="{{.Code}}" readonly></td><td><div class="grid min-w-96 gap-2 md:grid-cols-2"><input class="input" form="game-type-{{.Code}}" name="name" value="{{.Name}}" required><input class="input font-mono" form="game-type-{{.Code}}" name="frontend_module" value="{{.FrontendModule}}" required></div></td><td><label class="flex items-center gap-2"><input class="checkbox" form="game-type-{{.Code}}" type="checkbox" name="is_active" value="1" {{if .IsActive}}checked{{end}}> Aktif</label></td><td><button class="btn-secondary btn-small" form="game-type-{{.Code}}" type="submit">Perbarui</button></td></tr>{{end}}
+    </tbody></table></div>
+  </section>
+</div>
+{{end}}

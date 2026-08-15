@@ -1,0 +1,7 @@
+{{define "content"}}
+<section class="card"><div class="card-header"><div><h2 class="font-bold">Sesi anonim</h2><p class="text-sm text-slate-500">Tidak ada data customer. Token hanya mengikat satu proses permainan.</p></div><span class="badge badge-info">500 terbaru</span></div>
+  <div class="table-wrap"><table class="data-table"><thead><tr><th>ID</th><th>Campaign</th><th>Token</th><th>Kode akses</th><th>Status</th><th>Dibuat</th><th>Selesai</th></tr></thead><tbody>
+    {{range .Data.Items}}<tr><td class="text-slate-400">#{{.ID}}</td><td class="font-medium">{{.CampaignName}}</td><td class="font-mono text-xs" title="{{.SessionToken}}">{{short .SessionToken 18}}</td><td class="font-mono text-xs">{{if .AccessCode}}{{.AccessCode}}{{else}}—{{end}}</td><td><span class="{{statusClass .Status}}">{{.Status}}</span></td><td class="whitespace-nowrap text-slate-500">{{date .CreatedAt}}</td><td class="whitespace-nowrap text-slate-500">{{date .CompletedAt}}</td></tr>{{else}}<tr><td colspan="7" class="py-10 text-center text-slate-500">Belum ada sesi permainan.</td></tr>{{end}}
+  </tbody></table></div>
+</section>
+{{end}}

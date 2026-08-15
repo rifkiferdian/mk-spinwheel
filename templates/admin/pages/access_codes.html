@@ -1,0 +1,16 @@
+{{define "content"}}
+<div class="grid gap-6 xl:grid-cols-[380px_1fr]">
+  <section class="card h-fit"><div class="card-header"><div><h2 class="font-bold">Tambah kode akses</h2><p class="text-sm text-slate-500">Pisahkan kode dengan baris atau koma.</p></div></div>
+    <form class="card-body space-y-4" method="post" action="/admin/access-codes/add"><input type="hidden" name="csrf_token" value="{{.CSRF}}">
+      <div><label class="label">Campaign</label><select class="input" name="campaign_id" required><option value="">Pilih campaign</option>{{range .Data.Campaigns}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></div>
+      <div><label class="label">Daftar kode</label><textarea class="input min-h-48 font-mono" name="codes" placeholder="TIKET-001&#10;TIKET-002&#10;TIKET-003" required></textarea></div>
+      <button class="btn-primary w-full" type="submit">Tambahkan kode</button>
+    </form>
+  </section>
+  <section class="card"><div class="card-header"><div><h2 class="font-bold">Kode akses</h2><p class="text-sm text-slate-500">Maksimal 500 data terbaru.</p></div><form method="get"><select class="input min-w-52" name="campaign" data-auto-submit><option value="">Semua campaign</option>{{range .Data.Campaigns}}<option value="{{.ID}}" {{if eq .ID $.Data.CampaignID}}selected{{end}}>{{.Name}}</option>{{end}}</select></form></div>
+    <div class="table-wrap"><table class="data-table"><thead><tr><th>Kode</th><th>Campaign</th><th>Status</th><th>Dibuat</th><th>Aksi</th></tr></thead><tbody>
+      {{range .Data.Items}}<tr><td class="font-mono font-semibold">{{.Code}}</td><td>{{.CampaignName}}</td><td><span class="{{statusClass .Status}}">{{.Status}}</span></td><td class="whitespace-nowrap text-slate-500">{{date .CreatedAt}}</td><td>{{if ne .Status "used"}}<form class="flex gap-2" method="post" action="/admin/access-codes/{{.ID}}/status"><input type="hidden" name="csrf_token" value="{{$.CSRF}}">{{if eq .Status "unused"}}<button class="btn-secondary btn-small" name="status" value="disabled">Nonaktifkan</button>{{else}}<button class="btn-secondary btn-small" name="status" value="unused">Aktifkan</button>{{end}}</form>{{else}}<span class="text-xs text-slate-400">{{date .UsedAt}}</span>{{end}}</td></tr>{{else}}<tr><td colspan="5" class="py-10 text-center text-slate-500">Belum ada kode akses.</td></tr>{{end}}
+    </tbody></table></div>
+  </section>
+</div>
+{{end}}

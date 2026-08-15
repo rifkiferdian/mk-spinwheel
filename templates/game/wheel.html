@@ -1,0 +1,69 @@
+{{define "wheel.html"}}
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#312e81">
+  <title>{{.Campaign.Name}} · PrizePlay</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script src="/static/js/games/wheel.js" defer></script>
+</head>
+<body class="game-shell manna-theme flex h-[100dvh] flex-col overflow-hidden text-slate-900">
+  <div class="game-orb game-orb-one"></div><div class="game-orb game-orb-two"></div>
+  <div class="festival-confetti" aria-hidden="true"></div>
+  <div class="festival-waves" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+  <div class="festival-rings" aria-hidden="true"><span></span><span></span></div>
+  <header class="relative z-10 mx-auto flex w-full max-w-7xl shrink-0 items-center px-5 py-1 sm:px-8 sm:py-2">
+    <a class="block" href="/" aria-label="Manna Kampus">
+      <img class="h-7 w-auto object-contain sm:h-9" src="/static/images/manna-kampus.png" alt="Manna Kampus">
+    </a>
+  </header>
+
+  <main id="wheel-app" data-campaign-slug="{{.Campaign.Slug}}" class="game-main relative z-10 mx-auto flex w-full min-w-0 max-w-5xl flex-1 items-start justify-center px-4 pb-2 sm:px-8">
+    <section class="flex h-full min-h-0 w-full min-w-0 flex-col items-center justify-start text-center">
+      <div class="game-intro mx-auto mb-1 max-w-2xl shrink-0">
+        <span class="inline-flex items-center rounded-full border border-orange-300 bg-orange-100 px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-orange-700">Hadiah menanti Anda</span>
+        <h1 id="game-headline" class="mt-2 break-words text-2xl font-black tracking-tight text-stone-900 sm:text-4xl">Putar & Menangkan Hadiah!</h1>
+        <p class="game-description mx-auto mt-1 max-w-xl text-sm leading-5 text-stone-600">Tekan tombol putar dan biarkan keberuntungan memilih hadiah spesial untuk Anda.</p>
+      </div>
+
+      <div class="wheel-stage mx-auto">
+        <div class="wheel-glow"></div>
+        <div class="wheel-pointer" aria-hidden="true"><span id="wheel-pointer-tip"></span></div>
+        <svg id="wheel-svg" class="relative z-10 size-full drop-shadow-2xl" viewBox="0 0 600 600" role="img" aria-label="Roda hadiah">
+          <circle cx="300" cy="300" r="292" fill="#f8fafc" opacity=".22"></circle>
+          <g id="wheel-lights" aria-hidden="true"></g>
+          <g id="wheel-rotor" transform="rotate(0 300 300)">
+            <g id="wheel-segments"></g>
+          </g>
+          <circle cx="300" cy="300" r="58" fill="#ffffff"></circle>
+          <circle cx="300" cy="300" r="42" fill="#292524"></circle>
+          <text x="300" y="309" text-anchor="middle" fill="#f97316" font-size="26" font-weight="900">✦</text>
+        </svg>
+      </div>
+
+      <div class="mx-auto mt-2 w-full max-w-sm shrink-0">
+        <button id="spin-button" class="spin-button w-full" type="button" disabled>
+          <span id="spin-button-text">Memuat permainan…</span>
+        </button>
+        <p id="game-status" class="mt-1 min-h-5 text-xs font-semibold text-stone-600 sm:text-sm" aria-live="polite">Menyiapkan hadiah Anda.</p>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="result-dialog" class="result-dialog">
+    <div class="result-icon">★</div>
+    <p class="text-xs font-bold uppercase tracking-[0.2em] text-orange-600">Hasil permainan</p>
+    <h2 id="result-title" class="mt-2 text-3xl font-black tracking-tight text-slate-950">Selamat!</h2>
+    <p id="result-description" class="mt-2 text-sm leading-6 text-slate-500"></p>
+    <div id="claim-box" class="mt-5 rounded-2xl bg-orange-100 p-4 ring-1 ring-orange-200">
+      <p class="text-xs font-bold uppercase tracking-widest text-orange-600">Kode klaim</p>
+      <p id="claim-code" class="mt-1 font-mono text-2xl font-black tracking-wider text-stone-950"></p>
+    </div>
+    <button id="play-again-button" class="btn-primary mt-6 w-full" type="button">Main lagi</button>
+  </dialog>
+  <canvas id="confetti-canvas" class="pointer-events-none fixed inset-0 z-50 size-full"></canvas>
+</body>
+</html>
+{{end}}

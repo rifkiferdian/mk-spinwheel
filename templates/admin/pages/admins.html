@@ -1,0 +1,17 @@
+{{define "content"}}
+<div class="grid gap-6 xl:grid-cols-[380px_1fr]">
+  <section class="card h-fit"><div class="card-header"><div><h2 class="font-bold">Tambah admin</h2><p class="text-sm text-slate-500">Password minimal delapan karakter.</p></div></div>
+    <form class="card-body space-y-4" method="post" action="/admin/admins/create"><input type="hidden" name="csrf_token" value="{{.CSRF}}">
+      <div><label class="label">Username</label><input class="input" name="username" minlength="3" required autocomplete="off"></div>
+      <div><label class="label">Password</label><input class="input" type="password" name="password" minlength="8" required autocomplete="new-password"></div>
+      <div><label class="label">Ulangi password</label><input class="input" type="password" name="password_confirmation" minlength="8" required autocomplete="new-password"></div>
+      <button class="btn-primary w-full" type="submit">Buat akun admin</button>
+    </form>
+  </section>
+  <section class="card"><div class="card-header"><div><h2 class="font-bold">Akun admin</h2><p class="text-sm text-slate-500">Minimal satu akun harus tetap aktif.</p></div></div>
+    <div class="table-wrap"><table class="data-table"><thead><tr><th>Username</th><th>Status</th><th>Dibuat</th><th>Terakhir diperbarui</th><th>Aksi</th></tr></thead><tbody>
+      {{range .Data.Items}}<tr><td class="font-semibold">{{.Username}}{{if eq .ID $.Admin.AdminID}} <span class="badge badge-info">Anda</span>{{end}}</td><td><span class="{{statusClass .IsActive}}">{{if .IsActive}}aktif{{else}}nonaktif{{end}}</span></td><td class="text-slate-500">{{date .CreatedAt}}</td><td class="text-slate-500">{{date .UpdatedAt}}</td><td>{{if ne .ID $.Admin.AdminID}}<form method="post" action="/admin/admins/{{.ID}}/active" data-confirm="Ubah status akun admin ini?"><input type="hidden" name="csrf_token" value="{{$.CSRF}}"><button class="btn-secondary btn-small" name="active" value="{{if .IsActive}}0{{else}}1{{end}}">{{if .IsActive}}Nonaktifkan{{else}}Aktifkan{{end}}</button></form>{{else}}<span class="text-xs text-slate-400">Sedang digunakan</span>{{end}}</td></tr>{{end}}
+    </tbody></table></div>
+  </section>
+</div>
+{{end}}
