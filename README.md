@@ -1,4 +1,4 @@
-# PrizePlay
+# MK Games
 
 Platform mini-game berhadiah dengan Go, SQLite, Go HTML templates, JavaScript,
 dan Tailwind CSS.

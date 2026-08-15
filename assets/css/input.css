@@ -31,6 +31,12 @@
   .dashboard-game-icon { @apply grid size-7 place-items-center rounded-lg bg-orange-500 text-white shadow-sm; }
   .dashboard-game-icon svg { @apply size-4; }
   .dashboard-game-arrow { @apply size-3.5 text-slate-400 transition group-hover:text-orange-500; }
+  .mk-admin-logo { @apply grid size-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-orange-400 via-orange-500 to-orange-600 text-sm font-black tracking-tight text-white shadow-lg shadow-orange-950/25 ring-1 ring-orange-300/50; }
+  .mk-admin-logo-small { @apply size-7 rounded-lg text-[10px] shadow-sm; }
+  .mk-admin-logo-large { @apply size-16 rounded-2xl text-xl shadow-xl shadow-orange-600/30; }
+  .mk-login-page { background:radial-gradient(circle at 18% 12%,rgba(249,115,22,.18),transparent 28%),radial-gradient(circle at 82% 88%,rgba(234,88,12,.14),transparent 30%),linear-gradient(145deg,#1c1917,#0c0a09 58%,#21120c); }
+  .mk-login-page .input { @apply focus:border-orange-500 focus:ring-orange-100; }
+  .mk-login-page .btn-primary { @apply bg-orange-500 shadow-md shadow-orange-950/20 hover:bg-orange-600; }
   .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white; }
   .nav-link-active { @apply bg-brand-600 text-white hover:bg-brand-600; }
   .badge { @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold; }
