@@ -29,7 +29,7 @@ type Views struct {
 func NewViews() (*Views, error) {
 	funcs := template.FuncMap{
 		"date": formatDate, "datetimeLocal": datetimeLocal, "jsonPretty": jsonPretty,
-		"short": shortText, "statusClass": statusClass, "add": func(a, b int) int { return a + b },
+		"short": shortText, "statusClass": statusClass, "gameIcon": gameIcon, "add": func(a, b int) int { return a + b },
 	}
 	base := "templates/admin/base.html"
 	files, err := filepath.Glob("templates/admin/pages/*.html")
@@ -50,6 +50,19 @@ func NewViews() (*Views, error) {
 		return nil, err
 	}
 	return views, nil
+}
+
+func gameIcon(code string) template.HTML {
+	icons := map[string]string{
+		"wheel":     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/><path d="M12 4v6m0 4v6M4 12h6m4 0h6M6.35 6.35l4.24 4.24m2.82 2.82 4.24 4.24m0-11.3-4.24 4.24m-2.82 2.82-4.24 4.24"/></svg>`,
+		"claw":      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14M12 4v5"/><circle cx="12" cy="10" r="1.6"/><path d="M10.6 11.2 8 16l-2-2m7.4-2.8L16 16l2-2"/></svg>`,
+		"fishing":   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 19 8-14m-5 9 7 4"/><path d="M15 18c0 2 1 3 2.5 3S20 20 20 18v-2"/><circle cx="13" cy="5" r="1"/></svg>`,
+		"lucky-dip": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h16v10H4zM3 7h18v3H3zM12 7v13"/><path d="M12 7H8.5A2.5 2.5 0 1 1 12 3.5V7Zm0 0h3.5A2.5 2.5 0 1 0 12 3.5V7Z"/></svg>`,
+	}
+	if icon, ok := icons[code]; ok {
+		return template.HTML(icon)
+	}
+	return template.HTML(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><rect x="4" y="6" width="16" height="12" rx="3"/><path d="M9 12h6M12 9v6"/><circle cx="7.5" cy="9.5" r=".5" fill="currentColor"/></svg>`)
 }
 
 func (v *Views) Render(w http.ResponseWriter, name string, data ViewData) {

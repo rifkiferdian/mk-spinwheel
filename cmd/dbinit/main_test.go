@@ -70,6 +70,47 @@ func TestSchemaDecrementsAndProtectsPrizeStock(t *testing.T) {
 	}
 }
 
+func TestRenameMysteryBoxMigration(t *testing.T) {
+	databasePath := filepath.Join(t.TempDir(), "rename.db")
+	db, err := sql.Open("sqlite", databasePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	db.SetMaxOpenConns(1)
+	if _, err = db.Exec("PRAGMA foreign_keys = ON"); err != nil {
+		t.Fatal(err)
+	}
+	if err = executeSQLFile(db, filepath.Join("..", "..", "migrations", "001_initial_schema.sql")); err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, db, `INSERT INTO game_types (code,name,frontend_module) VALUES ('mystery-box','Kotak Misteri','games/mystery-box.js')`)
+	mustExec(t, db, `INSERT INTO campaigns (game_type_code,name,slug,is_active) VALUES ('mystery-box','Campaign Lama','campaign-lama',1)`)
+	if err = executeSQLFile(db, filepath.Join("..", "..", "migrations", "002_campaign_games.sql")); err != nil {
+		t.Fatal(err)
+	}
+	if err = executeSQLFile(db, filepath.Join("..", "..", "migrations", "003_rename_mystery_box.sql")); err != nil {
+		t.Fatal(err)
+	}
+	var campaignType, campaignGameType string
+	if err = db.QueryRow(`SELECT game_type_code FROM campaigns WHERE slug='campaign-lama'`).Scan(&campaignType); err != nil {
+		t.Fatal(err)
+	}
+	if err = db.QueryRow(`SELECT game_type_code FROM campaign_games WHERE campaign_id=(SELECT id FROM campaigns WHERE slug='campaign-lama')`).Scan(&campaignGameType); err != nil {
+		t.Fatal(err)
+	}
+	if campaignType != "lucky-dip" || campaignGameType != "lucky-dip" {
+		t.Fatalf("campaign=%q relasi=%q", campaignType, campaignGameType)
+	}
+	var oldCount int
+	if err = db.QueryRow(`SELECT COUNT(*) FROM game_types WHERE code='mystery-box'`).Scan(&oldCount); err != nil {
+		t.Fatal(err)
+	}
+	if oldCount != 0 {
+		t.Fatalf("mystery-box masih tersisa: %d", oldCount)
+	}
+}
+
 func mustExec(t *testing.T, db *sql.DB, query string) {
 	t.Helper()
 	if _, err := db.Exec(query); err != nil {

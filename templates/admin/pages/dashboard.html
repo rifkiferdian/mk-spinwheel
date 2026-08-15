@@ -21,7 +21,11 @@
       </div>
       <div class="mt-4 flex flex-wrap gap-2">
         {{range .Games}}
-        <a class="btn-secondary btn-small" href="/play/{{$campaign.Slug}}/{{.Code}}" target="_blank" rel="noopener">{{.Name}} ↗</a>
+        <a class="dashboard-game-button group" href="/play/{{$campaign.Slug}}/{{.Code}}" target="_blank" rel="noopener">
+          <span class="dashboard-game-icon">{{gameIcon .Code}}</span>
+          <span>{{.Name}}</span>
+          <svg class="dashboard-game-arrow" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 5h8v8M15 5 5 15"/></svg>
+        </a>
         {{else}}<span class="text-xs text-slate-400">Belum ada game pada campaign ini.</span>{{end}}
       </div>
     </article>

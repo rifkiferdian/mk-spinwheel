@@ -186,4 +186,4 @@ INSERT OR IGNORE INTO game_types (code, name, frontend_module) VALUES
     ('wheel',       'Spin Wheel',      'games/wheel.js'),
     ('fishing',     'Pancing Hadiah',  'games/fishing.js'),
     ('claw',        'Capit Hadiah',    'games/claw.js'),
-    ('mystery-box', 'Kotak Misteri',   'games/mystery-box.js');
+    ('lucky-dip',   'Lucky Dip',       'games/lucky-dip.js');
