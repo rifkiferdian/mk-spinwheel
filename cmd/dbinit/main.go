@@ -42,8 +42,10 @@ func main() {
 	}
 
 	if *withDemo {
-		if err := executeSQLFile(db, "seeds/demo.sql"); err != nil {
-			log.Fatalf("menambahkan data demo: %v", err)
+		for _, seedPath := range []string{"seeds/demo.sql", "seeds/claw_demo.sql"} {
+			if err := executeSQLFile(db, seedPath); err != nil {
+				log.Fatalf("menambahkan data demo: %v", err)
+			}
 		}
 	}
 

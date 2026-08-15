@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"strings"
 )
@@ -35,6 +36,7 @@ type Prize struct {
 	ImagePath     string  `json:"imagePath,omitempty"`
 	Weight        float64 `json:"-"`
 	RequiresClaim bool    `json:"-"`
+	VisualCount   int     `json:"visualCount"`
 }
 
 type SpinResult struct {
@@ -90,7 +92,28 @@ func (s *Store) Campaign(ctx context.Context, slug string) (Campaign, error) {
 	if len(item.Prizes) < 2 {
 		return item, errors.New("campaign membutuhkan minimal dua hadiah aktif")
 	}
+	allocateVisualCounts(item.Prizes)
 	return item, nil
+}
+
+func allocateVisualCounts(prizes []Prize) {
+	totalWeight := 0.0
+	for _, prize := range prizes {
+		totalWeight += prize.Weight
+	}
+	if totalWeight <= 0 {
+		return
+	}
+	for index := range prizes {
+		count := int(math.Round((prizes[index].Weight / totalWeight) * 20))
+		if count < 2 {
+			count = 2
+		}
+		if count > 8 {
+			count = 8
+		}
+		prizes[index].VisualCount = count
+	}
 }
 
 func (s *Store) CreateSession(ctx context.Context, slug string) (string, error) {

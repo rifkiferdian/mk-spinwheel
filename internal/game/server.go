@@ -9,31 +9,36 @@ import (
 )
 
 type Server struct {
-	store  *Store
-	page   *template.Template
-	logger *log.Logger
+	store     *Store
+	wheelPage *template.Template
+	clawPage  *template.Template
+	logger    *log.Logger
 }
 
 type pageData struct{ Campaign Campaign }
 
 func NewServer(store *Store, logger *log.Logger) (*Server, error) {
-	page, err := template.ParseFiles("templates/game/wheel.html")
+	wheelPage, err := template.ParseFiles("templates/game/wheel.html")
 	if err != nil {
 		return nil, err
 	}
-	return &Server{store: store, page: page, logger: logger}, nil
+	clawPage, err := template.ParseFiles("templates/game/claw.html")
+	if err != nil {
+		return nil, err
+	}
+	return &Server{store: store, wheelPage: wheelPage, clawPage: clawPage, logger: logger}, nil
 }
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /play/{slug}", s.wheelPage)
+	mux.HandleFunc("GET /play/{slug}", s.gamePage)
 	mux.HandleFunc("GET /api/campaign/{slug}", s.campaign)
 	mux.HandleFunc("POST /api/game/session", s.createSession)
 	mux.HandleFunc("POST /api/game/play", s.play)
 	return mux
 }
 
-func (s *Server) wheelPage(w http.ResponseWriter, r *http.Request) {
+func (s *Server) gamePage(w http.ResponseWriter, r *http.Request) {
 	campaign, err := s.store.Campaign(r.Context(), r.PathValue("slug"))
 	if errors.Is(err, ErrNotFound) {
 		http.NotFound(w, r)
@@ -43,13 +48,20 @@ func (s *Server) wheelPage(w http.ResponseWriter, r *http.Request) {
 		s.internalError(w, err)
 		return
 	}
-	if campaign.GameType != "wheel" {
+	var page *template.Template
+	var templateName string
+	switch campaign.GameType {
+	case "wheel":
+		page, templateName = s.wheelPage, "wheel.html"
+	case "claw":
+		page, templateName = s.clawPage, "claw.html"
+	default:
 		http.Error(w, "Tampilan game ini belum tersedia", http.StatusNotImplemented)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := s.page.ExecuteTemplate(w, "wheel.html", pageData{campaign}); err != nil {
-		s.logger.Printf("render wheel: %v", err)
+	if err := page.ExecuteTemplate(w, templateName, pageData{campaign}); err != nil {
+		s.logger.Printf("render %s: %v", campaign.GameType, err)
 	}
 }
 

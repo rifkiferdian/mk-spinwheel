@@ -1,0 +1,66 @@
+{{define "claw.html"}}
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f97316">
+  <title>{{.Campaign.Name}} · Manna Kampus</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script src="/static/js/games/claw.js" defer></script>
+</head>
+<body class="claw-page manna-theme flex h-[100dvh] flex-col overflow-hidden text-stone-900">
+  <div class="festival-confetti" aria-hidden="true"></div>
+  <div class="festival-waves" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+  <div class="festival-rings" aria-hidden="true"><span></span><span></span></div>
+  <header class="relative z-10 mx-auto flex w-full max-w-7xl shrink-0 items-center px-5 py-2 sm:px-8">
+    <a href="/" aria-label="Manna Kampus"><img class="h-7 w-auto object-contain sm:h-9" src="/static/images/manna-kampus.png" alt="Manna Kampus"></a>
+  </header>
+
+  <main id="claw-app" data-campaign-slug="{{.Campaign.Slug}}" class="relative z-10 mx-auto flex min-h-0 w-full max-w-6xl flex-1 items-center justify-center px-4 pb-3 sm:px-6">
+    <div class="claw-layout w-full">
+      <section class="claw-machine" aria-label="Mesin capit hadiah">
+        <div class="claw-marquee"><span class="claw-marquee-light"></span><strong>CAPIT HADIAH</strong><span class="claw-marquee-light"></span></div>
+        <div id="claw-window" class="claw-window">
+          <div class="claw-rail"></div>
+          <div id="claw-carriage" class="claw-carriage">
+            <div class="claw-carriage-box">M</div>
+            <div id="claw-line" class="claw-line"></div>
+            <div id="claw-grip" class="claw-grip">
+              <span class="claw-arm claw-arm-left"></span><span class="claw-joint"></span><span class="claw-arm claw-arm-right"></span>
+              <span id="claw-catch" class="claw-catch" hidden></span>
+            </div>
+          </div>
+          <div id="claw-prizes" class="claw-prizes"></div>
+          <div id="claw-chute" class="claw-chute"><span id="claw-chute-label" class="claw-chute-label">AMBIL HADIAH</span><span id="claw-chute-prize" class="claw-chute-prize" hidden></span></div>
+          <div class="claw-floor"></div>
+        </div>
+        <div class="claw-machine-base"><span></span><strong>MANNA CLAW</strong><span></span></div>
+      </section>
+
+      <section class="claw-console">
+        <span class="inline-flex rounded-full border border-orange-300 bg-orange-100 px-3 py-1 text-[11px] font-black uppercase tracking-[.18em] text-orange-700">Game Capit Boneka</span>
+        <h1 id="claw-headline" class="mt-3 text-3xl font-black leading-tight text-stone-950 sm:text-4xl">Capit & Bawa Pulang Hadiahnya!</h1>
+        <p class="mt-2 text-sm leading-6 text-stone-600">Tekan tombol, tunggu capit memilih hadiah, dan lihat apakah hadiah berhasil dibawa ke lubang pengambilan.</p>
+        <div class="claw-console-screen"><span id="claw-screen-icon">★</span><p id="claw-status" aria-live="polite">Mesin sedang disiapkan…</p></div>
+        <button id="claw-button" class="claw-button" type="button" disabled><span id="claw-button-text">MEMUAT GAME…</span></button>
+        <div class="claw-console-note"><strong>1.</strong> Tekan tombol &nbsp; <strong>2.</strong> Tunggu capit &nbsp; <strong>3.</strong> Klaim hadiah</div>
+      </section>
+    </div>
+  </main>
+
+  <dialog id="claw-result-dialog" class="result-dialog claw-result-dialog">
+    <div class="result-icon">★</div>
+    <p class="text-xs font-bold uppercase tracking-[.2em] text-orange-600">Hasil permainan</p>
+    <h2 id="claw-result-title" class="mt-2 text-3xl font-black tracking-tight text-stone-950"></h2>
+    <p id="claw-result-description" class="mt-2 text-sm leading-6 text-stone-600"></p>
+    <div id="claw-claim-box" class="mt-5 rounded-2xl bg-orange-100 p-4 ring-1 ring-orange-200">
+      <p class="text-xs font-bold uppercase tracking-widest text-orange-600">Kode klaim</p>
+      <p id="claw-claim-code" class="mt-1 font-mono text-2xl font-black tracking-wider text-stone-950"></p>
+    </div>
+    <button id="claw-play-again" class="btn-primary mt-6 w-full" type="button">Main lagi</button>
+  </dialog>
+  <canvas id="claw-confetti" class="pointer-events-none fixed inset-0 z-50 size-full"></canvas>
+</body>
+</html>
+{{end}}
