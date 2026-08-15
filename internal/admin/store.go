@@ -87,6 +87,34 @@ type GameResult struct {
 	PlayedAt, ClaimedAt                             string
 }
 
+type ReportFilter struct {
+	CampaignID int64
+	From, To   string
+}
+
+type ReportSummary struct {
+	TotalPlays, ClaimableWins, Claimed, Pending, Cancelled, NotRequired int
+	ClaimRate                                                           float64
+}
+
+type ReportPrize struct {
+	PrizeID, CampaignID                                int64
+	CampaignName, PrizeName                            string
+	TotalWon, Claimed, Pending, Cancelled, NotRequired int
+	RemainingStock                                     int
+	IsUnlimited                                        bool
+	Percentage                                         float64
+}
+
+type ReportDaily struct {
+	Date                                                 string
+	TotalPlays, Claimed, Pending, Cancelled, NotRequired int
+}
+
+type ReportDetail struct {
+	PlayedAt, CampaignName, PrizeName, ClaimCode, ClaimStatus string
+}
+
 type AdminUser struct {
 	ID                             int64
 	Username, CreatedAt, UpdatedAt string
@@ -450,6 +478,122 @@ func (s *Store) SetClaimStatus(ctx context.Context, id int64, status string) err
 	}
 	_, err := s.db.ExecContext(ctx, `UPDATE game_results SET claim_status=?, claimed_at=CASE WHEN ?='claimed' THEN strftime('%Y-%m-%dT%H:%M:%fZ','now') ELSE NULL END WHERE id=?`, status, status, id)
 	return err
+}
+
+func (s *Store) Report(ctx context.Context, filter ReportFilter, detailLimit int) (ReportSummary, []ReportPrize, []ReportDaily, []ReportDetail, error) {
+	var summary ReportSummary
+	err := s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*),
+		       COALESCE(SUM(CASE WHEN r.claim_code IS NOT NULL THEN 1 ELSE 0 END),0),
+		       COALESCE(SUM(CASE WHEN r.claim_status='claimed' THEN 1 ELSE 0 END),0),
+		       COALESCE(SUM(CASE WHEN r.claim_status='pending' THEN 1 ELSE 0 END),0),
+		       COALESCE(SUM(CASE WHEN r.claim_status='cancelled' THEN 1 ELSE 0 END),0),
+		       COALESCE(SUM(CASE WHEN r.claim_status='not_required' THEN 1 ELSE 0 END),0)
+		FROM game_results r
+		WHERE (?=0 OR r.campaign_id=?)
+		  AND date(r.played_at) >= date(?)
+		  AND date(r.played_at) <= date(?)
+	`, filter.CampaignID, filter.CampaignID, filter.From, filter.To).Scan(
+		&summary.TotalPlays, &summary.ClaimableWins, &summary.Claimed,
+		&summary.Pending, &summary.Cancelled, &summary.NotRequired,
+	)
+	if err != nil {
+		return summary, nil, nil, nil, err
+	}
+	claimProcessTotal := summary.Claimed + summary.Pending
+	if claimProcessTotal > 0 {
+		summary.ClaimRate = float64(summary.Claimed) / float64(claimProcessTotal) * 100
+	}
+
+	prizeRows, err := s.db.QueryContext(ctx, `
+		SELECT p.id,p.campaign_id,c.name,p.name,
+		       COUNT(r.id),
+		       COALESCE(SUM(CASE WHEN r.claim_status='claimed' THEN 1 ELSE 0 END),0),
+		       COALESCE(SUM(CASE WHEN r.claim_status='pending' THEN 1 ELSE 0 END),0),
+		       COALESCE(SUM(CASE WHEN r.claim_status='cancelled' THEN 1 ELSE 0 END),0),
+		       COALESCE(SUM(CASE WHEN r.claim_status='not_required' THEN 1 ELSE 0 END),0),
+		       p.remaining_stock,p.is_unlimited
+		FROM prizes p
+		JOIN campaigns c ON c.id=p.campaign_id
+		LEFT JOIN game_results r ON r.prize_id=p.id
+		 AND date(r.played_at) >= date(?)
+		 AND date(r.played_at) <= date(?)
+		WHERE (?=0 OR p.campaign_id=?)
+		GROUP BY p.id
+		ORDER BY COUNT(r.id) DESC,c.name,p.display_order,p.name
+	`, filter.From, filter.To, filter.CampaignID, filter.CampaignID)
+	if err != nil {
+		return summary, nil, nil, nil, err
+	}
+	var prizes []ReportPrize
+	for prizeRows.Next() {
+		var item ReportPrize
+		if err := prizeRows.Scan(&item.PrizeID, &item.CampaignID, &item.CampaignName, &item.PrizeName, &item.TotalWon, &item.Claimed, &item.Pending, &item.Cancelled, &item.NotRequired, &item.RemainingStock, &item.IsUnlimited); err != nil {
+			prizeRows.Close()
+			return summary, nil, nil, nil, err
+		}
+		if summary.TotalPlays > 0 {
+			item.Percentage = float64(item.TotalWon) / float64(summary.TotalPlays) * 100
+		}
+		prizes = append(prizes, item)
+	}
+	if err := prizeRows.Close(); err != nil {
+		return summary, nil, nil, nil, err
+	}
+
+	dailyRows, err := s.db.QueryContext(ctx, `
+		SELECT date(r.played_at),COUNT(*),
+		       SUM(CASE WHEN r.claim_status='claimed' THEN 1 ELSE 0 END),
+		       SUM(CASE WHEN r.claim_status='pending' THEN 1 ELSE 0 END),
+		       SUM(CASE WHEN r.claim_status='cancelled' THEN 1 ELSE 0 END),
+		       SUM(CASE WHEN r.claim_status='not_required' THEN 1 ELSE 0 END)
+		FROM game_results r
+		WHERE (?=0 OR r.campaign_id=?)
+		  AND date(r.played_at) >= date(?)
+		  AND date(r.played_at) <= date(?)
+		GROUP BY date(r.played_at)
+		ORDER BY date(r.played_at) DESC
+	`, filter.CampaignID, filter.CampaignID, filter.From, filter.To)
+	if err != nil {
+		return summary, prizes, nil, nil, err
+	}
+	var daily []ReportDaily
+	for dailyRows.Next() {
+		var item ReportDaily
+		if err := dailyRows.Scan(&item.Date, &item.TotalPlays, &item.Claimed, &item.Pending, &item.Cancelled, &item.NotRequired); err != nil {
+			dailyRows.Close()
+			return summary, prizes, nil, nil, err
+		}
+		daily = append(daily, item)
+	}
+	if err := dailyRows.Close(); err != nil {
+		return summary, prizes, nil, nil, err
+	}
+
+	detailRows, err := s.db.QueryContext(ctx, `
+		SELECT r.played_at,c.name,p.name,COALESCE(r.claim_code,''),r.claim_status
+		FROM game_results r
+		JOIN campaigns c ON c.id=r.campaign_id
+		JOIN prizes p ON p.id=r.prize_id
+		WHERE (?=0 OR r.campaign_id=?)
+		  AND date(r.played_at) >= date(?)
+		  AND date(r.played_at) <= date(?)
+		ORDER BY r.played_at DESC
+		LIMIT ?
+	`, filter.CampaignID, filter.CampaignID, filter.From, filter.To, detailLimit)
+	if err != nil {
+		return summary, prizes, daily, nil, err
+	}
+	defer detailRows.Close()
+	var details []ReportDetail
+	for detailRows.Next() {
+		var item ReportDetail
+		if err := detailRows.Scan(&item.PlayedAt, &item.CampaignName, &item.PrizeName, &item.ClaimCode, &item.ClaimStatus); err != nil {
+			return summary, prizes, daily, nil, err
+		}
+		details = append(details, item)
+	}
+	return summary, prizes, daily, details, detailRows.Err()
 }
 
 func (s *Store) Admins(ctx context.Context) ([]AdminUser, error) {

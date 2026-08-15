@@ -29,7 +29,7 @@ type Views struct {
 func NewViews() (*Views, error) {
 	funcs := template.FuncMap{
 		"date": formatDate, "datetimeLocal": datetimeLocal, "jsonPretty": jsonPretty,
-		"short": shortText, "statusClass": statusClass, "gameIcon": gameIcon, "add": func(a, b int) int { return a + b },
+		"short": shortText, "statusClass": statusClass, "gameIcon": gameIcon, "percent": formatPercent, "add": func(a, b int) int { return a + b },
 	}
 	base := "templates/admin/base.html"
 	files, err := filepath.Glob("templates/admin/pages/*.html")
@@ -50,6 +50,10 @@ func NewViews() (*Views, error) {
 		return nil, err
 	}
 	return views, nil
+}
+
+func formatPercent(value float64) string {
+	return fmt.Sprintf("%.1f%%", value)
 }
 
 func gameIcon(code string) template.HTML {

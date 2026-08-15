@@ -2,6 +2,7 @@ package admin
 
 import (
 	"database/sql"
+	"encoding/csv"
 	"errors"
 	"log"
 	"net/http"
@@ -51,6 +52,8 @@ func (s *Server) Routes(static, public http.Handler) http.Handler {
 	protected.HandleFunc("GET /admin/sessions", s.gameSessions)
 	protected.HandleFunc("GET /admin/results", s.results)
 	protected.HandleFunc("POST /admin/results/{id}/status", s.setClaimStatus)
+	protected.HandleFunc("GET /admin/reports", s.reports)
+	protected.HandleFunc("GET /admin/reports/export", s.exportReport)
 	protected.HandleFunc("GET /admin/admins", s.admins)
 	protected.HandleFunc("POST /admin/admins/create", s.createAdmin)
 	protected.HandleFunc("POST /admin/admins/{id}/active", s.setAdminActive)
@@ -368,6 +371,97 @@ func (s *Server) setClaimStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	redirectMessage(w, r, "/admin/results", "notice", "Status klaim diperbarui")
+}
+
+type reportsData struct {
+	Campaigns []Campaign
+	Filter    ReportFilter
+	Summary   ReportSummary
+	Prizes    []ReportPrize
+	Daily     []ReportDaily
+	Details   []ReportDetail
+}
+
+func (s *Server) reports(w http.ResponseWriter, r *http.Request) {
+	filter, err := reportFilter(r)
+	if err != nil {
+		redirectMessage(w, r, "/admin/reports", "error", err.Error())
+		return
+	}
+	campaigns, err := s.store.Campaigns(r.Context())
+	if err != nil {
+		s.internalError(w, err)
+		return
+	}
+	summary, prizes, daily, details, err := s.store.Report(r.Context(), filter, 200)
+	if err != nil {
+		s.internalError(w, err)
+		return
+	}
+	data := reportsData{Campaigns: campaigns, Filter: filter, Summary: summary, Prizes: prizes, Daily: daily, Details: details}
+	s.views.Render(w, "reports", viewData(r, "Report Campaign", "reports", data))
+}
+
+func (s *Server) exportReport(w http.ResponseWriter, r *http.Request) {
+	filter, err := reportFilter(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	_, _, _, details, err := s.store.Report(r.Context(), filter, 100000)
+	if err != nil {
+		s.internalError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Content-Disposition", "attachment; filename=report-campaign-"+filter.From+"-"+filter.To+".csv")
+	_, _ = w.Write([]byte{0xEF, 0xBB, 0xBF})
+	writer := csv.NewWriter(w)
+	_ = writer.Write([]string{"Waktu", "Campaign", "Hadiah", "Kode Klaim", "Status"})
+	for _, item := range details {
+		_ = writer.Write([]string{
+			csvSafe(item.PlayedAt), csvSafe(item.CampaignName), csvSafe(item.PrizeName),
+			csvSafe(item.ClaimCode), csvSafe(item.ClaimStatus),
+		})
+	}
+	writer.Flush()
+}
+
+func reportFilter(r *http.Request) (ReportFilter, error) {
+	now := time.Now()
+	filter := ReportFilter{
+		CampaignID: queryID(r, "campaign"),
+		From:       now.AddDate(0, 0, -29).Format("2006-01-02"),
+		To:         now.Format("2006-01-02"),
+	}
+	if value := strings.TrimSpace(r.URL.Query().Get("from")); value != "" {
+		filter.From = value
+	}
+	if value := strings.TrimSpace(r.URL.Query().Get("to")); value != "" {
+		filter.To = value
+	}
+	from, err := time.Parse("2006-01-02", filter.From)
+	if err != nil {
+		return filter, errors.New("tanggal mulai tidak valid")
+	}
+	to, err := time.Parse("2006-01-02", filter.To)
+	if err != nil {
+		return filter, errors.New("tanggal selesai tidak valid")
+	}
+	if from.After(to) {
+		return filter, errors.New("tanggal mulai tidak boleh melewati tanggal selesai")
+	}
+	if to.Sub(from) > 366*24*time.Hour {
+		return filter, errors.New("rentang report maksimal 366 hari")
+	}
+	return filter, nil
+}
+
+func csvSafe(value string) string {
+	if value != "" && strings.ContainsRune("=+-@", rune(value[0])) {
+		return "'" + value
+	}
+	return value
 }
 
 type adminsData struct{ Items []AdminUser }

@@ -1,0 +1,64 @@
+{{define "content"}}
+<section class="card">
+  <form class="card-body grid items-end gap-4 md:grid-cols-[minmax(220px,1fr)_180px_180px_auto]" method="get" action="/admin/reports">
+    <div><label class="label">Campaign</label><select class="input" name="campaign"><option value="">Semua campaign</option>{{range .Data.Campaigns}}<option value="{{.ID}}" {{if eq .ID $.Data.Filter.CampaignID}}selected{{end}}>{{.Name}}</option>{{end}}</select></div>
+    <div><label class="label">Tanggal mulai</label><input class="input" type="date" name="from" value="{{.Data.Filter.From}}" required></div>
+    <div><label class="label">Tanggal selesai</label><input class="input" type="date" name="to" value="{{.Data.Filter.To}}" required></div>
+    <button class="btn-primary" type="submit">Tampilkan report</button>
+  </form>
+</section>
+
+<div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+  <p class="text-sm text-slate-500">Periode <strong class="text-slate-700">{{.Data.Filter.From}}</strong> sampai <strong class="text-slate-700">{{.Data.Filter.To}}</strong></p>
+  <a class="btn-secondary btn-small" href="/admin/reports/export?campaign={{.Data.Filter.CampaignID}}&amp;from={{.Data.Filter.From}}&amp;to={{.Data.Filter.To}}">Unduh CSV</a>
+</div>
+
+<div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+  <div class="stat-card"><div class="text-sm text-slate-500">Total permainan</div><div class="mt-2 text-3xl font-bold text-slate-950">{{.Data.Summary.TotalPlays}}</div></div>
+  <div class="stat-card"><div class="text-sm text-slate-500">Hadiah perlu klaim</div><div class="mt-2 text-3xl font-bold text-orange-600">{{.Data.Summary.ClaimableWins}}</div></div>
+  <div class="stat-card"><div class="text-sm text-slate-500">Klaim selesai</div><div class="mt-2 text-3xl font-bold text-emerald-600">{{.Data.Summary.Claimed}}</div></div>
+  <div class="stat-card"><div class="text-sm text-slate-500">Menunggu klaim</div><div class="mt-2 text-3xl font-bold text-amber-600">{{.Data.Summary.Pending}}</div></div>
+  <div class="stat-card"><div class="text-sm text-slate-500">Dibatalkan</div><div class="mt-2 text-3xl font-bold text-rose-600">{{.Data.Summary.Cancelled}}</div></div>
+  <div class="stat-card"><div class="text-sm text-slate-500">Tingkat klaim</div><div class="mt-2 text-3xl font-bold text-brand-600">{{percent .Data.Summary.ClaimRate}}</div><div class="mt-1 text-xs text-slate-400">Selesai dari klaim aktif</div></div>
+</div>
+
+<div class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,.7fr)]">
+  <section class="card">
+    <div class="card-header"><div><h2 class="font-bold text-slate-950">Distribusi hadiah</h2><p class="text-sm text-slate-500">Jumlah hadiah terpilih dan persentasenya dari total permainan.</p></div></div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Hadiah</th><th>Terpilih</th><th>Persentase</th><th>Claimed</th><th>Pending</th><th>Sisa stok</th></tr></thead>
+        <tbody>
+          {{range .Data.Prizes}}<tr>
+            <td><div class="font-semibold text-slate-900">{{.PrizeName}}</div><div class="text-xs text-slate-400">{{.CampaignName}}</div></td>
+            <td class="font-bold">{{.TotalWon}}</td>
+            <td class="min-w-36"><div class="flex items-center gap-2"><progress class="h-2 w-24 overflow-hidden rounded-full accent-orange-500" max="100" value="{{printf "%.2f" .Percentage}}"></progress><span class="text-xs font-semibold">{{percent .Percentage}}</span></div></td>
+            <td class="text-emerald-700">{{.Claimed}}</td><td class="text-amber-700">{{.Pending}}</td>
+            <td>{{if .IsUnlimited}}∞{{else}}{{.RemainingStock}}{{end}}</td>
+          </tr>{{else}}<tr><td colspan="6" class="py-10 text-center text-slate-500">Belum ada hadiah pada filter ini.</td></tr>{{end}}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><div><h2 class="font-bold text-slate-950">Aktivitas harian</h2><p class="text-sm text-slate-500">Jumlah permainan per tanggal.</p></div></div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Tanggal</th><th>Main</th><th>Claimed</th><th>Pending</th></tr></thead>
+        <tbody>{{range .Data.Daily}}<tr><td class="whitespace-nowrap font-medium">{{.Date}}</td><td class="font-bold">{{.TotalPlays}}</td><td class="text-emerald-700">{{.Claimed}}</td><td class="text-amber-700">{{.Pending}}</td></tr>{{else}}<tr><td colspan="4" class="py-10 text-center text-slate-500">Belum ada aktivitas.</td></tr>{{end}}</tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<section class="card mt-6">
+  <div class="card-header"><div><h2 class="font-bold text-slate-950">Detail hasil</h2><p class="text-sm text-slate-500">Maksimal 200 hasil terbaru pada filter. CSV memuat maksimal 100.000 baris.</p></div></div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Waktu</th><th>Campaign</th><th>Hadiah</th><th>Kode klaim</th><th>Status</th></tr></thead>
+      <tbody>{{range .Data.Details}}<tr><td class="whitespace-nowrap text-slate-500">{{date .PlayedAt}}</td><td>{{.CampaignName}}</td><td class="font-semibold">{{.PrizeName}}</td><td class="font-mono text-xs">{{if .ClaimCode}}{{.ClaimCode}}{{else}}—{{end}}</td><td><span class="{{statusClass .ClaimStatus}}">{{.ClaimStatus}}</span></td></tr>{{else}}<tr><td colspan="5" class="py-10 text-center text-slate-500">Tidak ada hasil pada periode ini.</td></tr>{{end}}</tbody>
+    </table>
+  </div>
+</section>
+{{end}}
