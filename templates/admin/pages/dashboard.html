@@ -1,5 +1,4 @@
 {{define "content"}}
-<div class="mb-5 flex justify-end"><a class="btn-primary" href="/play/capit-boneka-ceria" target="_blank" rel="noopener">New Page · Game Capit ↗</a></div>
 <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
   <div class="stat-card"><div class="text-sm text-slate-500">Campaign</div><div class="mt-2 text-3xl font-bold text-slate-950">{{.Data.Stats.Campaigns}}</div><div class="mt-1 text-xs text-emerald-600">{{.Data.Stats.ActiveCampaigns}} aktif</div></div>
   <div class="stat-card"><div class="text-sm text-slate-500">Jenis hadiah</div><div class="mt-2 text-3xl font-bold text-slate-950">{{.Data.Stats.Prizes}}</div></div>
@@ -7,6 +6,29 @@
   <div class="stat-card"><div class="text-sm text-slate-500">Total permainan</div><div class="mt-2 text-3xl font-bold text-slate-950">{{.Data.Stats.TotalPlays}}</div></div>
   <div class="stat-card sm:col-span-2"><div class="text-sm text-slate-500">Menunggu klaim</div><div class="mt-2 text-3xl font-bold text-amber-600">{{.Data.Stats.PendingClaims}}</div><a class="mt-2 inline-block text-xs font-semibold text-brand-600" href="/admin/results">Lihat klaim →</a></div>
 </div>
+
+<section class="card mt-6">
+  <div class="card-header">
+    <div><h2 class="font-bold text-slate-950">Campaign &amp; game</h2><p class="text-sm text-slate-500">Pilih game yang ingin dibuka dari setiap campaign.</p></div>
+    <a class="btn-primary btn-small" href="/admin/campaigns">Kelola campaign</a>
+  </div>
+  <div class="card-body grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    {{range .Data.Campaigns}}{{$campaign := .}}
+    <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div class="flex items-start justify-between gap-3">
+        <div><h3 class="font-bold text-slate-950">{{.Name}}</h3><p class="mt-1 font-mono text-xs text-slate-400">{{.Slug}}</p></div>
+        <span class="{{statusClass .IsActive}}">{{if .IsActive}}aktif{{else}}nonaktif{{end}}</span>
+      </div>
+      <div class="mt-4 flex flex-wrap gap-2">
+        {{range .Games}}
+        <a class="btn-secondary btn-small" href="/play/{{$campaign.Slug}}/{{.Code}}" target="_blank" rel="noopener">{{.Name}} ↗</a>
+        {{else}}<span class="text-xs text-slate-400">Belum ada game pada campaign ini.</span>{{end}}
+      </div>
+    </article>
+    {{else}}<p class="text-sm text-slate-500">Belum ada campaign.</p>{{end}}
+  </div>
+</section>
+
 <div class="card mt-6">
   <div class="card-header"><div><h2 class="font-bold text-slate-950">Hasil terbaru</h2><p class="text-sm text-slate-500">Delapan permainan terakhir.</p></div><a class="btn-secondary btn-small" href="/admin/results">Lihat semua</a></div>
   <div class="table-wrap">

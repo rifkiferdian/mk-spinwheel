@@ -25,7 +25,7 @@ func (s *Server) Routes(static, public http.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /static/", http.StripPrefix("/static/", static))
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/play/festival-hadiah-ceria", http.StatusSeeOther)
+		http.Redirect(w, r, "/play/festival-hadiah-ceria/wheel", http.StatusSeeOther)
 	})
 	mux.Handle("/play/", public)
 	mux.Handle("/api/", public)
@@ -164,8 +164,9 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 }
 
 type dashboardData struct {
-	Stats   DashboardStats
-	Results []GameResult
+	Stats     DashboardStats
+	Results   []GameResult
+	Campaigns []Campaign
 }
 
 func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
@@ -174,7 +175,12 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 		s.internalError(w, err)
 		return
 	}
-	s.views.Render(w, "dashboard", viewData(r, "Dashboard", "dashboard", dashboardData{stats, results}))
+	campaigns, err := s.store.Campaigns(r.Context())
+	if err != nil {
+		s.internalError(w, err)
+		return
+	}
+	s.views.Render(w, "dashboard", viewData(r, "Dashboard", "dashboard", dashboardData{Stats: stats, Results: results, Campaigns: campaigns}))
 }
 
 type gameTypesData struct{ Items []GameType }
@@ -227,7 +233,11 @@ func (s *Server) campaigns(w http.ResponseWriter, r *http.Request) {
 	s.views.Render(w, "campaigns", viewData(r, "Campaign", "campaigns", campaignsData{items, types, edit}))
 }
 func (s *Server) saveCampaign(w http.ResponseWriter, r *http.Request) {
-	item := Campaign{ID: formID(r, "id"), GameTypeCode: r.FormValue("game_type_code"), Name: r.FormValue("name"), Slug: r.FormValue("slug"), GameConfig: r.FormValue("game_config"), StartsAt: r.FormValue("starts_at"), EndsAt: r.FormValue("ends_at"), IsActive: formBool(r, "is_active")}
+	if err := r.ParseForm(); err != nil {
+		redirectMessage(w, r, "/admin/campaigns", "error", "Form campaign tidak valid")
+		return
+	}
+	item := Campaign{ID: formID(r, "id"), GameCodes: r.Form["game_type_codes"], Name: r.FormValue("name"), Slug: r.FormValue("slug"), GameConfig: r.FormValue("game_config"), StartsAt: r.FormValue("starts_at"), EndsAt: r.FormValue("ends_at"), IsActive: formBool(r, "is_active")}
 	if err := s.store.SaveCampaign(r.Context(), item); err != nil {
 		redirectMessage(w, r, "/admin/campaigns", "error", friendlyDBError(err).Error())
 		return

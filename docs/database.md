@@ -6,14 +6,18 @@ session anonim untuk memastikan satu sesi menghasilkan maksimal satu hasil.
 ## Relasi utama
 
 ```text
-game_types  1 ─── n campaigns 1 ─── n prizes
-                         │                │
-                         ├── n game_sessions
-                         │          │
-                         │          └── 1 game_results ── 1 prizes
-                         │
-                         └── n access_codes (opsional)
+game_types 1 --- n campaign_games n --- 1 campaigns 1 --- n prizes
+                                             |
+                                             +--- n game_sessions
+                                             |          |
+                                             |          +--- 1 game_results --- 1 prizes
+                                             |
+                                             +--- n access_codes (opsional)
 ```
+
+Satu campaign dapat memiliki banyak game melalui `campaign_games`. Hadiah,
+bobot, dan stok tetap dimiliki campaign sehingga semua game dalam campaign
+menggunakan alokasi hadiah yang sama.
 
 ## Aturan stok
 
@@ -22,7 +26,7 @@ game_types  1 ─── n campaigns 1 ─── n prizes
 - Insert ke `game_results` otomatis mengurangi `remaining_stock`.
 - Database menolak hasil jika stok hadiah sudah habis.
 - Satu `game_session_id` hanya boleh mempunyai satu hasil.
-- Pemilihan hadiah di aplikasi Go tetap harus dilakukan dalam satu transaksi.
+- Pemilihan hadiah di aplikasi Go tetap dilakukan dalam satu transaksi.
 
 ## Membuat database dengan Go
 
@@ -43,17 +47,17 @@ Lokasi database dapat diganti dengan parameter `-db`.
 
 ## Membuat database dengan SQLite CLI
 
-Dengan SQLite CLI:
-
 ```powershell
 New-Item -ItemType Directory -Force data
 sqlite3 ./data/game.db ".read ./migrations/001_initial_schema.sql"
+sqlite3 ./data/game.db ".read ./migrations/002_campaign_games.sql"
 ```
 
 Data contoh bersifat opsional:
 
 ```powershell
 sqlite3 ./data/game.db ".read ./seeds/demo.sql"
+sqlite3 ./data/game.db ".read ./seeds/claw_demo.sql"
 ```
 
 Jangan memasukkan database produksi ke Git. Simpan migration SQL sebagai sumber

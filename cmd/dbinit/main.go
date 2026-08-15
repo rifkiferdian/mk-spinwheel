@@ -37,8 +37,10 @@ func main() {
 		log.Fatalf("mengatur SQLite: %v", err)
 	}
 
-	if err := executeSQLFile(db, "migrations/001_initial_schema.sql"); err != nil {
-		log.Fatalf("menjalankan migration: %v", err)
+	for _, migrationPath := range []string{"migrations/001_initial_schema.sql", "migrations/002_campaign_games.sql"} {
+		if err := executeSQLFile(db, migrationPath); err != nil {
+			log.Fatalf("menjalankan migration: %v", err)
+		}
 	}
 
 	if *withDemo {

@@ -30,11 +30,33 @@ type GameType struct {
 	IsActive                              bool
 }
 
+type CampaignGame struct {
+	Code, Name, FrontendModule, GameConfig string
+	IsActive                               bool
+	DisplayOrder                           int
+}
+
 type Campaign struct {
 	ID                                                 int64
 	GameTypeCode, GameTypeName, Name, Slug, GameConfig string
 	StartsAt, EndsAt, CreatedAt, UpdatedAt             string
 	IsActive                                           bool
+	Games                                              []CampaignGame
+	GameCodes                                          []string
+}
+
+func (c Campaign) HasGame(code string) bool {
+	for _, game := range c.Games {
+		if game.Code == code {
+			return true
+		}
+	}
+	for _, selected := range c.GameCodes {
+		if selected == code {
+			return true
+		}
+	}
+	return false
 }
 
 type Prize struct {
@@ -138,7 +160,19 @@ func (s *Store) Campaigns(ctx context.Context) ([]Campaign, error) {
 		}
 		items = append(items, item)
 	}
-	return items, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	for index := range items {
+		items[index].Games, err = s.CampaignGames(ctx, items[index].ID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return items, nil
 }
 
 func (s *Store) Campaign(ctx context.Context, id int64) (Campaign, error) {
@@ -148,28 +182,100 @@ func (s *Store) Campaign(ctx context.Context, id int64) (Campaign, error) {
 		       COALESCE(c.starts_at, ''), COALESCE(c.ends_at, ''), c.is_active, c.created_at, c.updated_at
 		FROM campaigns c JOIN game_types gt ON gt.code = c.game_type_code WHERE c.id = ?
 	`, id).Scan(&item.ID, &item.GameTypeCode, &item.GameTypeName, &item.Name, &item.Slug, &item.GameConfig, &item.StartsAt, &item.EndsAt, &item.IsActive, &item.CreatedAt, &item.UpdatedAt)
+	if err == nil {
+		item.Games, err = s.CampaignGames(ctx, item.ID)
+	}
 	return item, err
 }
 
-func (s *Store) SaveCampaign(ctx context.Context, item Campaign) error {
-	if item.Name == "" || item.Slug == "" || item.GameTypeCode == "" {
-		return errors.New("nama, slug, dan jenis game wajib diisi")
+func (s *Store) CampaignGames(ctx context.Context, campaignID int64) ([]CampaignGame, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT cg.game_type_code,gt.name,gt.frontend_module,cg.game_config,cg.is_active,cg.display_order
+		FROM campaign_games cg
+		JOIN game_types gt ON gt.code=cg.game_type_code
+		WHERE cg.campaign_id=? AND cg.is_active=1
+		ORDER BY cg.display_order,gt.name
+	`, campaignID)
+	if err != nil {
+		return nil, err
 	}
+	defer rows.Close()
+	var games []CampaignGame
+	for rows.Next() {
+		var game CampaignGame
+		if err := rows.Scan(&game.Code, &game.Name, &game.FrontendModule, &game.GameConfig, &game.IsActive, &game.DisplayOrder); err != nil {
+			return nil, err
+		}
+		games = append(games, game)
+	}
+	return games, rows.Err()
+}
+
+func (s *Store) SaveCampaign(ctx context.Context, item Campaign) error {
+	var gameCodes []string
+	seen := make(map[string]bool)
+	for _, code := range item.GameCodes {
+		code = strings.ToLower(strings.TrimSpace(code))
+		if code != "" && !seen[code] {
+			seen[code] = true
+			gameCodes = append(gameCodes, code)
+		}
+	}
+	if item.Name == "" || item.Slug == "" || len(gameCodes) == 0 {
+		return errors.New("nama, slug, dan minimal satu jenis game wajib diisi")
+	}
+	item.GameTypeCode = gameCodes[0]
 	if item.GameConfig == "" {
 		item.GameConfig = "{}"
 	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 	if item.ID == 0 {
-		_, err := s.db.ExecContext(ctx, `
+		result, err := tx.ExecContext(ctx, `
 			INSERT INTO campaigns (game_type_code, name, slug, game_config, starts_at, ends_at, is_active)
 			VALUES (?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?)
 		`, item.GameTypeCode, strings.TrimSpace(item.Name), strings.TrimSpace(item.Slug), item.GameConfig, item.StartsAt, item.EndsAt, item.IsActive)
+		if err != nil {
+			return err
+		}
+		item.ID, err = result.LastInsertId()
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err = tx.ExecContext(ctx, `
+			UPDATE campaigns SET game_type_code=?, name=?, slug=?, game_config=?, starts_at=NULLIF(?, ''), ends_at=NULLIF(?, ''),
+			is_active=?, updated_at=strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id=?
+		`, item.GameTypeCode, strings.TrimSpace(item.Name), strings.TrimSpace(item.Slug), item.GameConfig, item.StartsAt, item.EndsAt, item.IsActive, item.ID)
+		if err != nil {
+			return err
+		}
+	}
+	if _, err = tx.ExecContext(ctx, `UPDATE campaign_games SET is_active=0,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE campaign_id=?`, item.ID); err != nil {
 		return err
 	}
-	_, err := s.db.ExecContext(ctx, `
-		UPDATE campaigns SET game_type_code=?, name=?, slug=?, game_config=?, starts_at=NULLIF(?, ''), ends_at=NULLIF(?, ''),
-		is_active=?, updated_at=strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id=?
-	`, item.GameTypeCode, strings.TrimSpace(item.Name), strings.TrimSpace(item.Slug), item.GameConfig, item.StartsAt, item.EndsAt, item.IsActive, item.ID)
-	return err
+	for order, code := range gameCodes {
+		if _, err = tx.ExecContext(ctx, `
+			INSERT INTO campaign_games (campaign_id,game_type_code,game_config,is_active,display_order)
+			VALUES (?,?,?,?,?)
+			ON CONFLICT(campaign_id,game_type_code) DO UPDATE SET
+			is_active=1,display_order=excluded.display_order,
+			updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
+		`, item.ID, code, defaultGameConfig(code, item.GameConfig), true, order); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func defaultGameConfig(code, fallback string) string {
+	if code == "claw" {
+		return `{"theme":"manna-claw","duration_ms":5200,"show_confetti":true,"headline":"Capit & Bawa Pulang Hadiahnya!"}`
+	}
+	return fallback
 }
 
 func (s *Store) Prizes(ctx context.Context, campaignID int64) ([]Prize, error) {

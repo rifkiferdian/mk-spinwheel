@@ -21,10 +21,22 @@ func TestPlayIsIdempotentAndDecrementsStock(t *testing.T) {
 		t.Fatal(err)
 	}
 	executeFile(t, db, filepath.Join("..", "..", "migrations", "001_initial_schema.sql"))
+	executeFile(t, db, filepath.Join("..", "..", "migrations", "002_campaign_games.sql"))
 	executeFile(t, db, filepath.Join("..", "..", "seeds", "demo.sql"))
 	executeFile(t, db, filepath.Join("..", "..", "seeds", "demo.sql"))
 	store := NewStore(db)
 	ctx := context.Background()
+	wheelCampaign, err := store.CampaignForGame(ctx, "festival-hadiah-ceria", "wheel")
+	if err != nil {
+		t.Fatal(err)
+	}
+	clawCampaign, err := store.CampaignForGame(ctx, "festival-hadiah-ceria", "claw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if wheelCampaign.ID != clawCampaign.ID || wheelCampaign.GameType != "wheel" || clawCampaign.GameType != "claw" {
+		t.Fatalf("relasi multi-game tidak valid: wheel=%#v claw=%#v", wheelCampaign, clawCampaign)
+	}
 	token, err := store.CreateSession(ctx, "festival-hadiah-ceria")
 	if err != nil {
 		t.Fatal(err)

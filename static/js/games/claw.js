@@ -2,6 +2,7 @@ const clawApp = document.querySelector("#claw-app");
 
 if (clawApp) {
   const slug = clawApp.dataset.campaignSlug;
+	const gameType = clawApp.dataset.gameType;
   const machineWindow = document.querySelector("#claw-window");
   const carriage = document.querySelector("#claw-carriage");
   const line = document.querySelector("#claw-line");
@@ -75,7 +76,7 @@ if (clawApp) {
 
   async function initialize() {
     try {
-      campaign = await request(`/api/campaign/${encodeURIComponent(slug)}`);
+      campaign = await request(`/api/campaign/${encodeURIComponent(slug)}/${encodeURIComponent(gameType)}`);
       renderPrizes();
       if (campaign.config?.headline) headline.textContent = campaign.config.headline;
       button.disabled = false;
@@ -182,7 +183,7 @@ if (clawApp) {
     buttonText.textContent = "CAPIT SEDANG BERGERAK…";
     screenIcon.textContent = "…";
     try {
-      const session = await request("/api/game/session", { campaignSlug: campaign.slug });
+      const session = await request("/api/game/session", { campaignSlug: campaign.slug, gameType });
       const result = await request("/api/game/play", { sessionToken: session.sessionToken });
       const prizeIndex = campaign.prizes.findIndex((prize) => prize.id === result.prizeId);
       if (prizeIndex < 0) throw new Error("Hadiah tidak ditemukan dalam mesin");

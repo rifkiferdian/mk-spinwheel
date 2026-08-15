@@ -32,7 +32,9 @@ func NewServer(store *Store, logger *log.Logger) (*Server, error) {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /play/{slug}", s.gamePage)
+	mux.HandleFunc("GET /play/{slug}/{game}", s.gamePageByType)
 	mux.HandleFunc("GET /api/campaign/{slug}", s.campaign)
+	mux.HandleFunc("GET /api/campaign/{slug}/{game}", s.campaignByType)
 	mux.HandleFunc("POST /api/game/session", s.createSession)
 	mux.HandleFunc("POST /api/game/play", s.play)
 	return mux
@@ -40,6 +42,15 @@ func (s *Server) Handler() http.Handler {
 
 func (s *Server) gamePage(w http.ResponseWriter, r *http.Request) {
 	campaign, err := s.store.Campaign(r.Context(), r.PathValue("slug"))
+	if err == nil {
+		http.Redirect(w, r, "/play/"+campaign.Slug+"/"+campaign.GameType, http.StatusTemporaryRedirect)
+		return
+	}
+	s.handleGameError(w, r, err)
+}
+
+func (s *Server) gamePageByType(w http.ResponseWriter, r *http.Request) {
+	campaign, err := s.store.CampaignForGame(r.Context(), r.PathValue("slug"), r.PathValue("game"))
 	if errors.Is(err, ErrNotFound) {
 		http.NotFound(w, r)
 		return
@@ -65,8 +76,25 @@ func (s *Server) gamePage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) handleGameError(w http.ResponseWriter, r *http.Request, err error) {
+	if errors.Is(err, ErrNotFound) {
+		http.NotFound(w, r)
+		return
+	}
+	s.internalError(w, err)
+}
+
 func (s *Server) campaign(w http.ResponseWriter, r *http.Request) {
 	campaign, err := s.store.Campaign(r.Context(), r.PathValue("slug"))
+	s.writeCampaign(w, campaign, err)
+}
+
+func (s *Server) campaignByType(w http.ResponseWriter, r *http.Request) {
+	campaign, err := s.store.CampaignForGame(r.Context(), r.PathValue("slug"), r.PathValue("game"))
+	s.writeCampaign(w, campaign, err)
+}
+
+func (s *Server) writeCampaign(w http.ResponseWriter, campaign Campaign, err error) {
 	if errors.Is(err, ErrNotFound) {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
@@ -86,12 +114,13 @@ func (s *Server) campaign(w http.ResponseWriter, r *http.Request) {
 func (s *Server) createSession(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		CampaignSlug string `json:"campaignSlug"`
+		GameType     string `json:"gameType"`
 	}
 	if err := decodeJSON(w, r, &input); err != nil {
 		writeError(w, http.StatusBadRequest, "request tidak valid")
 		return
 	}
-	token, err := s.store.CreateSession(r.Context(), input.CampaignSlug)
+	token, err := s.store.CreateSessionForGame(r.Context(), input.CampaignSlug, input.GameType)
 	if errors.Is(err, ErrNotFound) {
 		writeError(w, http.StatusNotFound, err.Error())
 		return

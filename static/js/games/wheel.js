@@ -2,6 +2,7 @@ const app = document.querySelector("#wheel-app");
 
 if (app) {
   const slug = app.dataset.campaignSlug;
+	const gameType = app.dataset.gameType;
   const svgNS = "http://www.w3.org/2000/svg";
   const wheelSVG = document.querySelector("#wheel-svg");
   const wheelLights = document.querySelector("#wheel-lights");
@@ -112,7 +113,7 @@ if (app) {
 
   async function initialize() {
     try {
-      campaign = await request(`/api/campaign/${encodeURIComponent(slug)}`);
+      campaign = await request(`/api/campaign/${encodeURIComponent(slug)}/${encodeURIComponent(gameType)}`);
       drawLights();
       drawWheel(campaign.prizes);
       if (campaign.config?.headline) headline.textContent = campaign.config.headline;
@@ -133,7 +134,7 @@ if (app) {
     spinButtonText.textContent = "MENGACAK HADIAH…";
     statusText.textContent = "Keberuntungan sedang memilih hadiah Anda.";
     try {
-      const session = await request("/api/game/session", { campaignSlug: campaign.slug });
+      const session = await request("/api/game/session", { campaignSlug: campaign.slug, gameType });
       const result = await request("/api/game/play", { sessionToken: session.sessionToken });
       const prizeIndex = campaign.prizes.findIndex((prize) => prize.id === result.prizeId);
       if (prizeIndex < 0) throw new Error("Hadiah tidak ditemukan pada roda");

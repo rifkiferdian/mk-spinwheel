@@ -17,6 +17,17 @@ ON CONFLICT(slug) DO UPDATE SET
     game_config=excluded.game_config, is_active=excluded.is_active,
     updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now');
 
+INSERT OR IGNORE INTO campaign_games (campaign_id,game_type_code,game_config,is_active,display_order)
+SELECT id,'wheel',game_config,1,1 FROM campaigns WHERE slug='festival-hadiah-ceria';
+
+INSERT INTO campaign_games (campaign_id,game_type_code,game_config,is_active,display_order)
+SELECT id,'claw',
+       '{"theme":"manna-claw","duration_ms":5200,"show_confetti":true,"headline":"Capit & Bawa Pulang Hadiahnya!"}',
+       1,2
+FROM campaigns WHERE slug='festival-hadiah-ceria'
+ON CONFLICT(campaign_id,game_type_code) DO UPDATE SET
+    game_config=excluded.game_config,is_active=1,display_order=excluded.display_order;
+
 -- 1. Voucher Rp10.000
 UPDATE prizes SET description='Voucher belanja senilai Rp10.000',color='#F97316',weight=30,
  initial_stock=100,remaining_stock=MAX(0,100-(SELECT COUNT(*) FROM game_results r WHERE r.prize_id=prizes.id)),is_unlimited=0,

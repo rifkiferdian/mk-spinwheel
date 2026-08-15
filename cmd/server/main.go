@@ -30,8 +30,10 @@ func main() {
 	if _, err = db.Exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;`); err != nil {
 		logger.Fatal(err)
 	}
-	if err = applySchema(db, "migrations/001_initial_schema.sql"); err != nil {
-		logger.Fatal(err)
+	for _, migrationPath := range []string{"migrations/001_initial_schema.sql", "migrations/002_campaign_games.sql"} {
+		if err = applySchema(db, migrationPath); err != nil {
+			logger.Fatal(err)
+		}
 	}
 	views, err := admin.NewViews()
 	if err != nil {

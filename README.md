@@ -18,8 +18,8 @@ dibuat, halaman setup otomatis tidak dapat digunakan lagi.
 Halaman permainan demo tersedia di:
 
 ```text
-http://localhost:8080/play/festival-hadiah-ceria
-http://localhost:8080/play/capit-boneka-ceria
+http://localhost:8080/play/festival-hadiah-ceria/wheel
+http://localhost:8080/play/festival-hadiah-ceria/claw
 ```
 
 Campaign demo mempunyai lima hasil: Voucher Rp10.000, Kopi Gratis,

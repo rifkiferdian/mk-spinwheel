@@ -8,6 +8,9 @@ ON CONFLICT(slug) DO UPDATE SET
     game_config=excluded.game_config,is_active=excluded.is_active,
     updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now');
 
+INSERT OR IGNORE INTO campaign_games (campaign_id,game_type_code,game_config,is_active,display_order)
+SELECT id,'claw',game_config,1,1 FROM campaigns WHERE slug='capit-boneka-ceria';
+
 UPDATE prizes SET description='Boneka beruang lembut edisi Manna',color='#F97316',weight=12,
  initial_stock=15,remaining_stock=MAX(0,15-(SELECT COUNT(*) FROM game_results r WHERE r.prize_id=prizes.id)),
  is_unlimited=0,requires_claim=1,display_order=1,is_active=1

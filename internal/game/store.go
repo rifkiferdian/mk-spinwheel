@@ -56,14 +56,22 @@ type prizeCandidate struct {
 }
 
 func (s *Store) Campaign(ctx context.Context, slug string) (Campaign, error) {
+	return s.CampaignForGame(ctx, slug, "")
+}
+
+func (s *Store) CampaignForGame(ctx context.Context, slug, gameType string) (Campaign, error) {
 	var item Campaign
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id,name,slug,game_type_code,game_config
-		FROM campaigns
-		WHERE slug=? AND is_active=1
-		  AND (starts_at IS NULL OR starts_at <= strftime('%Y-%m-%dT%H:%M','now','localtime'))
-		  AND (ends_at IS NULL OR ends_at >= strftime('%Y-%m-%dT%H:%M','now','localtime'))
-	`, slug).Scan(&item.ID, &item.Name, &item.Slug, &item.GameType, &item.GameConfig)
+		SELECT c.id,c.name,c.slug,cg.game_type_code,cg.game_config
+		FROM campaigns c
+		JOIN campaign_games cg ON cg.campaign_id=c.id AND cg.is_active=1
+		JOIN game_types gt ON gt.code=cg.game_type_code AND gt.is_active=1
+		WHERE c.slug=? AND c.is_active=1 AND (?='' OR cg.game_type_code=?)
+		  AND (c.starts_at IS NULL OR c.starts_at <= strftime('%Y-%m-%dT%H:%M','now','localtime'))
+		  AND (c.ends_at IS NULL OR c.ends_at >= strftime('%Y-%m-%dT%H:%M','now','localtime'))
+		ORDER BY CASE WHEN cg.game_type_code=c.game_type_code THEN 0 ELSE 1 END, cg.display_order, cg.id
+		LIMIT 1
+	`, slug, gameType, gameType).Scan(&item.ID, &item.Name, &item.Slug, &item.GameType, &item.GameConfig)
 	if errors.Is(err, sql.ErrNoRows) {
 		return item, ErrNotFound
 	}
@@ -117,7 +125,11 @@ func allocateVisualCounts(prizes []Prize) {
 }
 
 func (s *Store) CreateSession(ctx context.Context, slug string) (string, error) {
-	campaign, err := s.Campaign(ctx, slug)
+	return s.CreateSessionForGame(ctx, slug, "")
+}
+
+func (s *Store) CreateSessionForGame(ctx context.Context, slug, gameType string) (string, error) {
+	campaign, err := s.CampaignForGame(ctx, slug, gameType)
 	if err != nil {
 		return "", err
 	}
