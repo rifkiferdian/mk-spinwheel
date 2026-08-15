@@ -27,8 +27,121 @@ if (clawApp) {
   let playing = false;
   let carriageOffset = 0;
   let lineHeight = 55;
+  let audioContext;
+  let audioOutput;
+  let audioLoadPromise;
+  let celebrationSource;
+  const audioBuffers = new Map();
+  const audioFiles = {
+    motor: "/static/audio/claw/motor.mp3",
+    grab: "/static/audio/claw/grab.mp3",
+    drop: "/static/audio/claw/drop.mp3",
+    fail: "/static/audio/claw/fail.mp3",
+    win: "/static/audio/claw/win-applause.mp3",
+  };
 
   const wait = (duration) => new Promise((resolve) => window.setTimeout(resolve, duration));
+
+  function getAudioContext() {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return null;
+    if (!audioContext || audioContext.state === "closed") {
+      audioContext = new AudioContextClass();
+      audioOutput = audioContext.createDynamicsCompressor();
+      audioOutput.threshold.value = -18;
+      audioOutput.knee.value = 12;
+      audioOutput.ratio.value = 4;
+      audioOutput.attack.value = 0.005;
+      audioOutput.release.value = 0.25;
+      audioOutput.connect(audioContext.destination);
+    }
+    return audioContext;
+  }
+
+  function activateAudio() {
+    const context = getAudioContext();
+    if (!context) return null;
+    if (audioContext.state === "suspended") void audioContext.resume();
+    return audioContext;
+  }
+
+  function preloadAudio() {
+    if (audioLoadPromise) return audioLoadPromise;
+    const context = getAudioContext();
+    if (!context) return Promise.resolve();
+    audioLoadPromise = Promise.all(Object.entries(audioFiles).map(async ([name, url]) => {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Audio ${name} tidak ditemukan`);
+      const buffer = await context.decodeAudioData(await response.arrayBuffer());
+      audioBuffers.set(name, buffer);
+    })).catch((error) => console.warn("Audio claw gagal dimuat; memakai suara cadangan.", error));
+    return audioLoadPromise;
+  }
+
+  function playAudioFile(name, options = {}) {
+    const context = activateAudio();
+    const buffer = audioBuffers.get(name);
+    if (!context || !buffer) return null;
+    const source = context.createBufferSource();
+    const gain = context.createGain();
+    source.buffer = buffer;
+    source.loop = Boolean(options.loop);
+    gain.gain.value = options.volume ?? 0.75;
+    source.connect(gain);
+    gain.connect(audioOutput);
+    source.start();
+    if (options.duration) source.stop(context.currentTime + options.duration / 1000);
+    return source;
+  }
+
+  function playTone(frequency, duration, options = {}) {
+    const context = activateAudio();
+    if (!context) return;
+    const start = context.currentTime + (options.delay || 0);
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = options.type || "sine";
+    oscillator.frequency.setValueAtTime(frequency, start);
+    if (options.endFrequency) oscillator.frequency.exponentialRampToValueAtTime(options.endFrequency, start + duration);
+    const volume = options.volume || 0.05;
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(volume, start + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    oscillator.connect(gain);
+    gain.connect(audioOutput || context.destination);
+    oscillator.start(start);
+    oscillator.stop(start + duration + 0.03);
+  }
+
+  function playMotor(duration) {
+    if (playAudioFile("motor", { volume: 0.32, loop: true, duration })) return;
+    playTone(72, Math.max(0.12, duration / 1000), { endFrequency: 96, type: "sawtooth", volume: 0.018 });
+  }
+
+  function playGrab() {
+    if (playAudioFile("grab", { volume: 0.72 })) return;
+    playTone(180, 0.12, { endFrequency: 115, type: "square", volume: 0.045 });
+    playTone(115, 0.1, { delay: 0.1, type: "square", volume: 0.035 });
+  }
+
+  function playDrop() {
+    if (playAudioFile("drop", { volume: 0.72 })) return;
+    playTone(520, 0.42, { endFrequency: 145, type: "triangle", volume: 0.055 });
+  }
+
+  function playWin() {
+    celebrationSource = playAudioFile("win", { volume: 0.9 });
+    if (celebrationSource) return;
+    [523, 659, 784, 1047].forEach((frequency, index) => {
+      playTone(frequency, 0.28, { delay: index * 0.11, type: "triangle", volume: 0.065 });
+    });
+  }
+
+  function playFail() {
+    if (playAudioFile("fail", { volume: 0.68 })) return;
+    playTone(260, 0.24, { endFrequency: 180, type: "triangle", volume: 0.05 });
+    playTone(180, 0.3, { delay: 0.2, endFrequency: 120, type: "triangle", volume: 0.045 });
+  }
 
   function emojiForPrize(name) {
     const normalized = name.toLowerCase();
@@ -90,6 +203,7 @@ if (clawApp) {
   }
 
   async function initialize() {
+    void preloadAudio();
     try {
       campaign = await request(`/api/campaign/${encodeURIComponent(slug)}/${encodeURIComponent(gameType)}`);
       renderPrizes();
@@ -106,6 +220,7 @@ if (clawApp) {
   }
 
   function moveCarriage(targetOffset, duration) {
+    playMotor(duration);
     const animation = carriage.animate(
       [
         { transform: `translateX(-50%) translateX(${carriageOffset}px)` },
@@ -118,6 +233,7 @@ if (clawApp) {
   }
 
   function moveLine(targetHeight, duration) {
+    playMotor(duration);
     const animation = line.animate(
       [{ height: `${lineHeight}px` }, { height: `${targetHeight}px` }],
       { duration, easing: "cubic-bezier(.35,.05,.2,1)", fill: "forwards" },
@@ -144,6 +260,7 @@ if (clawApp) {
     statusText.textContent = "Capit diturunkan…";
     await moveLine(dropHeight, 1150);
     grip.classList.add("claw-closed");
+    playGrab();
     await wait(430);
 
     if (won) {
@@ -166,6 +283,7 @@ if (clawApp) {
       const chuteLineHeight = Math.max(120, chuteBounds.top - windowBounds.top - 82);
       await moveLine(chuteLineHeight, 620);
       grip.classList.remove("claw-closed");
+      playDrop();
       const drop = caughtPrize.animate(
         [{ transform: "translate(-50%,0) scale(1)", opacity: 1 }, { transform: "translate(-50%,58px) rotate(22deg) scale(.72)", opacity: 0 }],
         { duration: 540, easing: "cubic-bezier(.25,.75,.35,1)", fill: "forwards" },
@@ -178,6 +296,7 @@ if (clawApp) {
       statusText.textContent = "Hadiah masuk ke tempat pengambilan!";
       await wait(950);
     } else {
+      playFail();
       const shake = carriage.animate(
         [
           { transform: `translateX(-50%) translateX(${targetOffset}px)` },
@@ -193,6 +312,7 @@ if (clawApp) {
 
   async function play() {
     if (playing || !campaign) return;
+    activateAudio();
     playing = true;
     button.disabled = true;
     buttonText.textContent = "CAPIT SEDANG BERGERAK…";
@@ -220,10 +340,17 @@ if (clawApp) {
     claimCode.textContent = result.claimCode || "";
     dialog.showModal();
     playAgain.focus();
-    if (result.claimStatus !== "not_required") launchClawConfetti();
+    if (result.claimStatus !== "not_required") {
+      playWin();
+      launchClawConfetti();
+    }
   }
 
   function resetMachine() {
+    if (celebrationSource) {
+      try { celebrationSource.stop(); } catch (_) { /* Audio sudah selesai. */ }
+      celebrationSource = null;
+    }
     [...carriage.getAnimations(), ...line.getAnimations(), ...caughtPrize.getAnimations()].forEach((animation) => animation.cancel());
     carriageOffset = 0;
     lineHeight = 55;

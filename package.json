@@ -1,10 +1,14 @@
 {
   "scripts": {
     "css:dev": "tailwindcss -i ./assets/css/input.css -o ./static/css/app.css --watch",
-    "css:build": "tailwindcss -i ./assets/css/input.css -o ./static/css/app.css --minify"
+    "css:build": "tailwindcss -i ./assets/css/input.css -o ./static/css/app.css --minify",
+    "audio:build": "node ./scripts/generate-claw-audio.cjs"
   },
   "dependencies": {
     "@tailwindcss/cli": "^4.3.3",
     "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "@breezystack/lamejs": "^1.2.7"
   }
 }
