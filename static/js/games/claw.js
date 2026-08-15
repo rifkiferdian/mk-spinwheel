@@ -39,6 +39,21 @@ if (clawApp) {
     return "❔";
   }
 
+  function setPrizeVisual(element, prize) {
+    element.replaceChildren();
+    const imagePath = prize.imagePath || prize.prizeImagePath;
+    const name = prize.name || prize.prizeName;
+    if (imagePath) {
+      const image = document.createElement("img");
+      image.src = imagePath;
+      image.alt = name;
+      image.draggable = false;
+      element.append(image);
+      return;
+    }
+    element.textContent = emojiForPrize(name);
+  }
+
   function renderPrizes() {
     prizeField.replaceChildren();
     const visualPrizes = [];
@@ -57,7 +72,7 @@ if (clawApp) {
       item.dataset.prizeId = prize.id;
       item.title = prize.name;
       const emoji = document.createElement("span");
-      emoji.textContent = emojiForPrize(prize.name);
+      setPrizeVisual(emoji, prize);
       item.append(emoji);
       prizeField.append(item);
     });
@@ -132,7 +147,7 @@ if (clawApp) {
     await wait(430);
 
     if (won) {
-      caughtPrize.textContent = emojiForPrize(result.prizeName);
+      setPrizeVisual(caughtPrize, result);
       caughtPrize.hidden = false;
       targetPrize?.classList.add("is-captured");
       statusText.textContent = "Hadiah berhasil dijepit!";
@@ -156,7 +171,7 @@ if (clawApp) {
         { duration: 540, easing: "cubic-bezier(.25,.75,.35,1)", fill: "forwards" },
       );
       await drop.finished;
-      chutePrize.textContent = emojiForPrize(result.prizeName);
+      setPrizeVisual(chutePrize, result);
       chutePrize.hidden = false;
       chuteLabel.textContent = "HADIAH BERHASIL MASUK!";
       chute.classList.add("is-delivered");

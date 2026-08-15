@@ -43,6 +43,7 @@ type SpinResult struct {
 	PrizeID          int64  `json:"prizeId"`
 	PrizeName        string `json:"prizeName"`
 	PrizeDescription string `json:"prizeDescription"`
+	PrizeImagePath   string `json:"prizeImagePath,omitempty"`
 	ClaimCode        string `json:"claimCode,omitempty"`
 	ClaimStatus      string `json:"claimStatus"`
 }
@@ -51,6 +52,7 @@ type prizeCandidate struct {
 	id            int64
 	name          string
 	description   string
+	imagePath     string
 	weight        float64
 	requiresClaim bool
 }
@@ -179,7 +181,7 @@ func (s *Store) Play(ctx context.Context, token string) (SpinResult, error) {
 	}
 
 	rows, err := tx.QueryContext(ctx, `
-		SELECT id,name,COALESCE(description,''),weight,requires_claim
+		SELECT id,name,COALESCE(description,''),COALESCE(image_path,''),weight,requires_claim
 		FROM prizes WHERE campaign_id=? AND is_active=1 AND (is_unlimited=1 OR remaining_stock>0)
 		ORDER BY display_order,id
 	`, campaignID)
@@ -190,7 +192,7 @@ func (s *Store) Play(ctx context.Context, token string) (SpinResult, error) {
 	total := 0.0
 	for rows.Next() {
 		var p prizeCandidate
-		if err := rows.Scan(&p.id, &p.name, &p.description, &p.weight, &p.requiresClaim); err != nil {
+		if err := rows.Scan(&p.id, &p.name, &p.description, &p.imagePath, &p.weight, &p.requiresClaim); err != nil {
 			rows.Close()
 			return SpinResult{}, err
 		}
@@ -208,7 +210,7 @@ func (s *Store) Play(ctx context.Context, token string) (SpinResult, error) {
 		return SpinResult{}, err
 	}
 
-	result := SpinResult{PrizeID: selected.id, PrizeName: selected.name, PrizeDescription: selected.description, ClaimStatus: "not_required"}
+	result := SpinResult{PrizeID: selected.id, PrizeName: selected.name, PrizeDescription: selected.description, PrizeImagePath: selected.imagePath, ClaimStatus: "not_required"}
 	if selected.requiresClaim {
 		result.ClaimStatus = "pending"
 		result.ClaimCode, err = claimCode()
@@ -229,9 +231,9 @@ func (s *Store) Play(ctx context.Context, token string) (SpinResult, error) {
 func existingResult(ctx context.Context, tx *sql.Tx, token string) (SpinResult, bool, error) {
 	var result SpinResult
 	err := tx.QueryRowContext(ctx, `
-	SELECT p.id,p.name,COALESCE(p.description,''),COALESCE(r.claim_code,''),r.claim_status
+	SELECT p.id,p.name,COALESCE(p.description,''),COALESCE(p.image_path,''),COALESCE(r.claim_code,''),r.claim_status
 	FROM game_results r JOIN prizes p ON p.id=r.prize_id JOIN game_sessions s ON s.id=r.game_session_id
-	WHERE s.session_token=?`, token).Scan(&result.PrizeID, &result.PrizeName, &result.PrizeDescription, &result.ClaimCode, &result.ClaimStatus)
+	WHERE s.session_token=?`, token).Scan(&result.PrizeID, &result.PrizeName, &result.PrizeDescription, &result.PrizeImagePath, &result.ClaimCode, &result.ClaimStatus)
 	if errors.Is(err, sql.ErrNoRows) {
 		return result, false, nil
 	}

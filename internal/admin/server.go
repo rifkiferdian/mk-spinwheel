@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -280,8 +281,24 @@ func (s *Server) prizes(w http.ResponseWriter, r *http.Request) {
 	s.views.Render(w, "prizes", viewData(r, "Hadiah", "prizes", prizesData{items, campaigns, edit, campaignID}))
 }
 func (s *Server) savePrize(w http.ResponseWriter, r *http.Request) {
-	item := Prize{ID: formID(r, "id"), CampaignID: formID(r, "campaign_id"), Name: r.FormValue("name"), Description: r.FormValue("description"), ImagePath: r.FormValue("image_path"), Color: r.FormValue("color"), Weight: formFloat(r, "weight"), InitialStock: formInt(r, "initial_stock"), RemainingStock: formInt(r, "remaining_stock"), IsUnlimited: formBool(r, "is_unlimited"), RequiresClaim: formBool(r, "requires_claim"), DisplayOrder: formInt(r, "display_order"), IsActive: formBool(r, "is_active")}
+	item := Prize{ID: formID(r, "id"), CampaignID: formID(r, "campaign_id"), Name: r.FormValue("name"), Description: r.FormValue("description"), ImagePath: r.FormValue("existing_image_path"), Color: r.FormValue("color"), Weight: formFloat(r, "weight"), InitialStock: formInt(r, "initial_stock"), RemainingStock: formInt(r, "remaining_stock"), IsUnlimited: formBool(r, "is_unlimited"), RequiresClaim: formBool(r, "requires_claim"), DisplayOrder: formInt(r, "display_order"), IsActive: formBool(r, "is_active")}
+	var uploadedDiskPath string
+	file, header, err := r.FormFile("image")
+	if err == nil {
+		defer file.Close()
+		item.ImagePath, uploadedDiskPath, err = savePrizeImage(file, header, item.Name)
+		if err != nil {
+			redirectMessage(w, r, "/admin/prizes", "error", err.Error())
+			return
+		}
+	} else if !errors.Is(err, http.ErrMissingFile) {
+		redirectMessage(w, r, "/admin/prizes", "error", "Upload gambar tidak dapat diproses")
+		return
+	}
 	if err := s.store.SavePrize(r.Context(), item); err != nil {
+		if uploadedDiskPath != "" {
+			_ = os.Remove(uploadedDiskPath)
+		}
 		redirectMessage(w, r, "/admin/prizes", "error", friendlyDBError(err).Error())
 		return
 	}

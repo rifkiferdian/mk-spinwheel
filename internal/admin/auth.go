@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -85,7 +86,17 @@ func (m *SessionManager) RequireAuth(next http.Handler) http.Handler {
 			return
 		}
 		if r.Method == http.MethodPost {
-			if err := r.ParseForm(); err != nil || r.FormValue("csrf_token") != session.CSRF {
+			r.Body = http.MaxBytesReader(w, r.Body, maxPrizeUploadSize+(1<<20))
+			var err error
+			if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
+				err = r.ParseMultipartForm(1 << 20)
+			} else {
+				err = r.ParseForm()
+			}
+			if r.MultipartForm != nil {
+				defer r.MultipartForm.RemoveAll()
+			}
+			if err != nil || r.Form.Get("csrf_token") != session.CSRF {
 				http.Error(w, "Permintaan tidak valid (CSRF)", http.StatusForbidden)
 				return
 			}
